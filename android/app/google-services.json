@@ -1,0 +1,47 @@
+{
+  "project_info": {
+    "project_number": "43606070339",
+    "project_id": "med-tracker-77bc3",
+    "storage_bucket": "med-tracker-77bc3.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:43606070339:android:41154262dd9ec5a58a70f6",
+        "android_client_info": {
+          "package_name": "com.example.med_tracker"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "43606070339-7nldhumo6dfqonkli5r6sf3omcpe0qhj.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.example.med_tracker",
+            "certificate_hash": "ecf3fb64d838368388acb39443d19be4d3f62447"
+          }
+        },
+        {
+          "client_id": "43606070339-1ffvdidgo4ks3kki6sq5jfcdm2j0csl8.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyBh2kw99nGXX6v-0kaWaTYOJ6NMWLYcJfQ"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "43606070339-1ffvdidgo4ks3kki6sq5jfcdm2j0csl8.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
