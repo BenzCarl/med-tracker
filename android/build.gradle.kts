@@ -1,17 +1,8 @@
 plugins {
     id("com.android.application") version "8.9.1" apply false
-    id("com.google.gms.google-services") version "4.3.15" apply false
-    kotlin("android") version "2.1.0" apply false   
+    id("com.google.gms.google-services") version "4.3.15" apply false // ✅ match FlutterFire
+    kotlin("android") version "2.1.0" apply false
 }
-
-
-allprojects {
-    repositories {
-        google()
-        mavenCentral()
-    }
-}
-
 
 allprojects {
     repositories {
@@ -30,6 +21,7 @@ subprojects {
     val newSubprojectBuildDir: Directory = newBuildDir.dir(project.name)
     project.layout.buildDirectory.value(newSubprojectBuildDir)
 }
+
 subprojects {
     project.evaluationDependsOn(":app")
 }

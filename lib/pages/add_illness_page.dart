@@ -11,9 +11,7 @@ class AddIllnessPage extends StatelessWidget {
         padding: const EdgeInsets.all(16.0),
         child: Column(
           children: [
-            const TextField(
-              decoration: InputDecoration(labelText: "Illness Name"),
-            ),
+            const TextField(decoration: InputDecoration(labelText: "Enter")),
             const SizedBox(height: 20),
             ElevatedButton(onPressed: () {}, child: const Text("Save Illness")),
           ],

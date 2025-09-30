@@ -89,4 +89,5 @@ class DefaultFirebaseOptions {
     storageBucket: 'med-tracker-77bc3.firebasestorage.app',
     measurementId: 'G-C72Y7DTLX6',
   );
+
 }

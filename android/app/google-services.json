@@ -37,6 +37,13 @@
             {
               "client_id": "43606070339-1ffvdidgo4ks3kki6sq5jfcdm2j0csl8.apps.googleusercontent.com",
               "client_type": 3
+            },
+            {
+              "client_id": "43606070339-jm81kkv79448ifim1qh3jrm984ltaja5.apps.googleusercontent.com",
+              "client_type": 2,
+              "ios_info": {
+                "bundle_id": "com.example.medTracker"
+              }
             }
           ]
         }

@@ -1,8 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'firebase_options.dart';
-
-import 'pages/login_page.dart';
+import 'pages/splash_page.dart'; // ✅ use splash page as entry point
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -17,9 +16,9 @@ class MyApp extends StatelessWidget {
   Widget build(BuildContext context) {
     return MaterialApp(
       debugShowCheckedModeBanner: false,
-      title: 'Med Tracker',
+      title: "Care Minder",
       theme: ThemeData(primarySwatch: Colors.blue),
-      home: const LoginPage(),
+      home: const SplashPage(), // ✅ now splash page shows first
     );
   }
 }
