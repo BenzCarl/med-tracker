@@ -14,11 +14,7 @@ class SplashPage extends StatelessWidget {
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
             // Illustration placeholder
-            Image.asset(
-              "assets/splash_illustration.png",
-              height: 200,
-              fit: BoxFit.contain,
-            ),
+            Image.asset("assets/1stlogo.png", height: 200, fit: BoxFit.contain),
             const SizedBox(height: 30),
 
             const Text(

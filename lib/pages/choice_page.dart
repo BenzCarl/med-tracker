@@ -14,11 +14,7 @@ class ChoicePage extends StatelessWidget {
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Image.asset(
-              "assets/choice_illustration.png",
-              height: 220,
-              fit: BoxFit.contain,
-            ),
+            Image.asset("assets/2ndlogo.png", height: 220, fit: BoxFit.contain),
             const SizedBox(height: 40),
 
             Row(
@@ -38,7 +34,10 @@ class ChoicePage extends StatelessWidget {
                       MaterialPageRoute(builder: (_) => const LoginPage()),
                     );
                   },
-                  child: const Text("Log In"),
+                  child: const Text(
+                    "Log In",
+                    style: TextStyle(color: Colors.white),
+                  ),
                 ),
                 ElevatedButton(
                   style: ElevatedButton.styleFrom(
@@ -54,7 +53,10 @@ class ChoicePage extends StatelessWidget {
                       MaterialPageRoute(builder: (_) => const RegisterPage()),
                     );
                   },
-                  child: const Text("Sign Up"),
+                  child: const Text(
+                    "Sign up",
+                    style: TextStyle(color: Colors.white),
+                  ),
                 ),
               ],
             ),

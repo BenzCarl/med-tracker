@@ -6,7 +6,6 @@ class HistoryPage extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text("Medication History")),
       body: ListView(
         children: const [
           ListTile(
