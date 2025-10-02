@@ -18,6 +18,7 @@ class _AddIllnessPageState extends State<AddIllnessPage> {
 
     final illness = illnessController.text.trim();
 
+    // ✅ Save illness to Firestore under illnesses array
     await FirebaseFirestore.instance.collection("users").doc(user.uid).set({
       "illnesses": FieldValue.arrayUnion([illness]),
     }, SetOptions(merge: true));
@@ -26,13 +27,19 @@ class _AddIllnessPageState extends State<AddIllnessPage> {
       const SnackBar(content: Text("Illness successfully added!")),
     );
 
-    Navigator.pop(context); // go back to profile or dashboard
+    Navigator.pop(context); // go back to ProfilePage
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text("Add Your Illness")),
+      appBar: AppBar(
+        title: const Text("Add Illness"),
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back),
+          onPressed: () => Navigator.pop(context),
+        ),
+      ),
       body: Padding(
         padding: const EdgeInsets.all(24.0),
         child: Column(

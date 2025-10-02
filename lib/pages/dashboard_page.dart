@@ -1,11 +1,13 @@
 import 'package:flutter/material.dart';
-import 'package:firebase_auth/firebase_auth.dart'; // ✅ for logout & user info
+import 'package:firebase_auth/firebase_auth.dart';
+import 'package:med_tracker/pages/edit_medicine_page.dart';
 import 'add_illness_page.dart';
 import 'add_medicine_page.dart';
 import 'schedule_page.dart';
 import 'inventory_page.dart';
 import 'history_page.dart';
-import 'profile_page.dart'; // ✅ Import the ProfilePage
+import 'profile_page.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 
 class DashboardPage extends StatefulWidget {
   const DashboardPage({super.key});
@@ -39,12 +41,12 @@ class _DashboardPageState extends State<DashboardPage> {
           content: const Text("Are you sure you want to log out?"),
           actions: [
             TextButton(
-              onPressed: () => Navigator.pop(context, false), // cancel
+              onPressed: () => Navigator.pop(context, false),
               child: const Text("Cancel"),
             ),
             ElevatedButton(
               style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
-              onPressed: () => Navigator.pop(context, true), // confirm
+              onPressed: () => Navigator.pop(context, true),
               child: const Text("Logout"),
             ),
           ],
@@ -54,7 +56,7 @@ class _DashboardPageState extends State<DashboardPage> {
 
     if (shouldLogout == true) {
       await FirebaseAuth.instance.signOut();
-      Navigator.pop(context); // back to login
+      Navigator.pop(context);
     }
   }
 
@@ -62,7 +64,7 @@ class _DashboardPageState extends State<DashboardPage> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        automaticallyImplyLeading: false, // 🚫 removes back arrow
+        automaticallyImplyLeading: false,
         title: Text(
           _selectedIndex == 0
               ? "Home"
@@ -78,9 +80,8 @@ class _DashboardPageState extends State<DashboardPage> {
             icon: const Icon(Icons.notifications_none),
           ),
           IconButton(
-            icon: const Icon(Icons.settings),
+            icon: const Icon(Icons.person),
             onPressed: () {
-              // ✅ Navigate to ProfilePage when settings icon is pressed
               Navigator.of(context).push(
                 MaterialPageRoute(builder: (context) => const ProfilePage()),
               );
@@ -88,7 +89,7 @@ class _DashboardPageState extends State<DashboardPage> {
           ),
           IconButton(
             icon: const Icon(Icons.logout, color: Colors.red),
-            onPressed: () => _confirmLogout(context), // ✅ confirm before logout
+            onPressed: () => _confirmLogout(context),
           ),
         ],
       ),
@@ -124,38 +125,31 @@ class HomeContent extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final user = FirebaseAuth.instance.currentUser; // ✅ user info
+    final user = FirebaseAuth.instance.currentUser;
 
-    return Center(
-      child: Padding(
-        padding: const EdgeInsets.all(24.0),
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            if (user != null) ...[
-              if (user.photoURL != null)
-                CircleAvatar(
-                  backgroundImage: NetworkImage(user.photoURL!),
-                  radius: 40,
-                ),
-              const SizedBox(height: 10),
-              Text(
-                "Hello, ${user.displayName ?? "User"}",
-                style: const TextStyle(
-                  fontSize: 20,
-                  fontWeight: FontWeight.bold,
-                ),
+    return Padding(
+      padding: const EdgeInsets.all(16.0),
+      child: Column(
+        children: [
+          if (user == null)
+            const Expanded(
+              child: Center(
+                child: Text("Please log in to view your medicines."),
               ),
-              Text(user.email ?? ""),
-              const SizedBox(height: 30),
-            ],
-
-            const Icon(Icons.search_off, size: 80, color: Colors.grey),
+            )
+          else ...[
+            if (user.photoURL != null)
+              CircleAvatar(
+                backgroundImage: NetworkImage(user.photoURL!),
+                radius: 40,
+              ),
             const SizedBox(height: 10),
-            const Text("No Result Found", style: TextStyle(fontSize: 18)),
-
-            const SizedBox(height: 40),
-
+            Text(
+              "Hello, ${user.displayName ?? "User"}",
+              style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+            ),
+            Text(user.email ?? ""),
+            const SizedBox(height: 20),
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceEvenly,
               children: [
@@ -168,17 +162,6 @@ class HomeContent extends StatelessWidget {
                   },
                   icon: const Icon(Icons.local_hospital),
                   label: const Text("Add Illness"),
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: Colors.blue,
-                    foregroundColor: Colors.white,
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 20,
-                      vertical: 12,
-                    ),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                  ),
                 ),
                 ElevatedButton.icon(
                   onPressed: () {
@@ -191,22 +174,189 @@ class HomeContent extends StatelessWidget {
                   },
                   icon: const Icon(Icons.medication),
                   label: const Text("Add Medicine"),
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: Colors.green,
-                    foregroundColor: Colors.white,
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 20,
-                      vertical: 12,
-                    ),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                  ),
                 ),
               ],
             ),
+            const SizedBox(height: 20),
+            Expanded(
+              child: StreamBuilder(
+                stream: FirebaseFirestore.instance
+                    .collection("users")
+                    .doc(user.uid)
+                    .collection("medicines")
+                    .orderBy("createdAt", descending: true)
+                    .snapshots(),
+                builder: (context, snapshot) {
+                  if (snapshot.connectionState == ConnectionState.waiting) {
+                    return const Center(child: CircularProgressIndicator());
+                  }
+                  if (snapshot.hasError) {
+                    return const Center(child: Text("Error loading medicines"));
+                  }
+                  if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
+                    return const Center(child: Text("No medicines added yet"));
+                  }
+
+                  final docs = snapshot.data!.docs;
+                  return ListView.builder(
+                    itemCount: docs.length,
+                    itemBuilder: (context, index) {
+                      final med = docs[index].data();
+                      return Card(
+                        margin: const EdgeInsets.symmetric(vertical: 8),
+                        child: ListTile(
+                          title: Text(med["name"] ?? ""),
+                          subtitle: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text("Dosage: ${med["dosage"] ?? ""}"),
+                              Text("Illness: ${med["illness"] ?? ""}"),
+                              Text("Start: ${med["startDate"] ?? ""}"),
+                              Text("End: ${med["endDate"] ?? ""}"),
+                              FutureBuilder<QuerySnapshot>(
+                                future: FirebaseFirestore.instance
+                                    .collection("users")
+                                    .doc(user.uid)
+                                    .collection("schedules")
+                                    .where(
+                                      "medicineName",
+                                      isEqualTo: med["name"],
+                                    )
+                                    .limit(1)
+                                    .get(),
+                                builder: (context, snapshot) {
+                                  if (!snapshot.hasData ||
+                                      snapshot.data!.docs.isEmpty) {
+                                    return const Text("No schedule set");
+                                  }
+                                  final schedule =
+                                      snapshot.data!.docs.first.data()
+                                          as Map<String, dynamic>;
+                                  return Text(
+                                    "Next Intake: ${schedule["time"] ?? ""} (${(schedule["days"] as List).join(", ")})",
+                                  );
+                                },
+                              ),
+                              FutureBuilder<QuerySnapshot>(
+                                future: FirebaseFirestore.instance
+                                    .collection("users")
+                                    .doc(user.uid)
+                                    .collection("inventory")
+                                    .where(
+                                      "medicineName",
+                                      isEqualTo: med["name"],
+                                    )
+                                    .get(),
+                                builder: (context, snapshot) {
+                                  if (!snapshot.hasData ||
+                                      snapshot.data!.docs.isEmpty) {
+                                    return const Text("No stock");
+                                  }
+                                  // Sum all quantities for this medicine
+                                  int totalQuantity = snapshot.data!.docs
+                                      .fold<int>(0, (sum, doc) {
+                                        final q = doc["quantity"];
+                                        if (q is int) return sum + q;
+                                        if (q is double) return sum + q.toInt();
+                                        if (q is String)
+                                          return sum + (int.tryParse(q) ?? 0);
+                                        return sum;
+                                      });
+                                  if (totalQuantity == 0) {
+                                    return const Text(
+                                      "No stock",
+                                      style: TextStyle(color: Colors.red),
+                                    );
+                                  } else if (totalQuantity < 10) {
+                                    return Text(
+                                      "Low stock: $totalQuantity",
+                                      style: const TextStyle(
+                                        color: Colors.orange,
+                                      ),
+                                    );
+                                  } else {
+                                    return Text(
+                                      "Stock left: $totalQuantity",
+                                      style: const TextStyle(
+                                        color: Colors.green,
+                                      ),
+                                    );
+                                  }
+                                },
+                              ),
+                            ],
+                          ),
+                          onTap: () async {
+                            final action = await showDialog<String>(
+                              context: context,
+                              builder: (context) => AlertDialog(
+                                title: const Text("Medicine Options"),
+                                content: const Text(
+                                  "Do you want to edit or delete this medicine?",
+                                ),
+                                actions: [
+                                  TextButton(
+                                    onPressed: () =>
+                                        Navigator.pop(context, "edit"),
+                                    child: const Text("Edit"),
+                                  ),
+                                  TextButton(
+                                    onPressed: () =>
+                                        Navigator.pop(context, "delete"),
+                                    child: const Text(
+                                      "Delete",
+                                      style: TextStyle(color: Colors.red),
+                                    ),
+                                  ),
+                                  TextButton(
+                                    onPressed: () =>
+                                        Navigator.pop(context, null),
+                                    child: const Text("Cancel"),
+                                  ),
+                                ],
+                              ),
+                            );
+                            if (action == "delete") {
+                              // Delete medicine
+                              await docs[index].reference.delete();
+                              // Delete related schedules
+                              final schedules = await FirebaseFirestore.instance
+                                  .collection("users")
+                                  .doc(user.uid)
+                                  .collection("schedules")
+                                  .where("medicineName", isEqualTo: med["name"])
+                                  .get();
+                              for (var doc in schedules.docs) {
+                                await doc.reference.delete();
+                              }
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                const SnackBar(
+                                  content: Text(
+                                    "Medicine and schedule deleted",
+                                  ),
+                                ),
+                              );
+                            } else if (action == "edit") {
+                              // Navigate to edit page (see below)
+                              Navigator.push(
+                                context,
+                                MaterialPageRoute(
+                                  builder: (_) => EditMedicinePage(
+                                    medicineDoc: docs[index],
+                                  ),
+                                ),
+                              );
+                            }
+                          },
+                        ),
+                      );
+                    },
+                  );
+                },
+              ),
+            ),
           ],
-        ),
+        ],
       ),
     );
   }
