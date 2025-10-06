@@ -4,7 +4,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/services.dart';
 import '../services/notification_service.dart';
-import 'package:med_tracker/pages/dashboard_page.dart';
+import '../common/dashboard_page.dart';
 
 class SchedulePage extends StatelessWidget {
   const SchedulePage({super.key});
@@ -16,8 +16,9 @@ class SchedulePage extends StatelessWidget {
   ) {
     TimeOfDay? selectedTime;
     String selectedDays = "Weekdays";
-    List<String> dayOptions = ["Weekdays", "Weekends", "Custom"];
+    List<String> dayOptions = ["Weekdays", "Weekends", "Custom", "Daily"];
     List<String> customDays = [];
+    String interval = "Daily"; // Daily, q2h, q4h, q6h, q12h
 
     showModalBottomSheet(
       context: context,
@@ -29,6 +30,9 @@ class SchedulePage extends StatelessWidget {
               final user = FirebaseAuth.instance.currentUser;
               if (user == null || selectedTime == null) return;
 
+              // Request notifications permission (Android 13+)
+              await NotificationService.requestPermissions();
+
               // ✅ Prepare days (strings)
               List<String> daysToSave;
               if (selectedDays == "Custom") {
@@ -37,6 +41,8 @@ class SchedulePage extends StatelessWidget {
                 daysToSave = ["Mon", "Tue", "Wed", "Thu", "Fri"];
               } else if (selectedDays == "Weekends") {
                 daysToSave = ["Sat", "Sun"];
+              } else if (selectedDays == "Daily") {
+                daysToSave = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
               } else {
                 daysToSave = [];
               }
@@ -55,6 +61,7 @@ class SchedulePage extends StatelessWidget {
                   "dosage": dosage,
                   "time": selectedTime?.format(context),
                   "days": daysToSave,
+                  "interval": interval,
                   "createdAt": FieldValue.serverTimestamp(),
                 });
               } else {
@@ -67,6 +74,7 @@ class SchedulePage extends StatelessWidget {
                       "dosage": dosage,
                       "time": selectedTime?.format(context),
                       "days": daysToSave,
+                      "interval": interval,
                       "createdAt": FieldValue.serverTimestamp(),
                     });
               }
@@ -90,17 +98,38 @@ class SchedulePage extends StatelessWidget {
               // ✅ Cancel old notifications
               await NotificationService.cancelNotificationsForTag(medicineName);
 
-              // ✅ Schedule new weekly notifications (without exact alarms)
+              // ✅ Schedule new weekly notifications (inexact mode)
               if (weekdaysInts.isNotEmpty) {
                 try {
-                  await NotificationService.scheduleWeekly(
-                    tag: medicineName,
-                    title: "Take your $medicineName",
-                    body: "Dosage: $dosage",
-                    hour: selectedTime!.hour,
-                    minute: selectedTime!.minute,
-                    weekdays: weekdaysInts,
-                  );
+                  if (interval == "Daily") {
+                    // schedule once per selected day
+                    await NotificationService.scheduleWeekly(
+                      tag: medicineName,
+                      title: "Take your $medicineName",
+                      body: "Dosage: $dosage",
+                      hour: selectedTime!.hour,
+                      minute: selectedTime!.minute,
+                      weekdays: weekdaysInts,
+                    );
+                  } else {
+                    // map interval code
+                    final intervalHours = interval == "q2h"
+                        ? 2
+                        : interval == "q4h"
+                            ? 4
+                            : interval == "q6h"
+                                ? 6
+                                : 12;
+                    await NotificationService.scheduleIntervalWeekly(
+                      tag: medicineName,
+                      title: "Take your $medicineName",
+                      body: "Dosage: $dosage",
+                      anchorHour: selectedTime!.hour,
+                      anchorMinute: selectedTime!.minute,
+                      intervalHours: intervalHours,
+                      weekdays: weekdaysInts,
+                    );
+                  }
 
                   // Show success message
                   if (context.mounted) {
@@ -108,6 +137,25 @@ class SchedulePage extends StatelessWidget {
                       SnackBar(
                         content: Text("✅ Schedule saved for $medicineName"),
                         backgroundColor: Colors.green,
+                      ),
+                    );
+                  }
+
+                  // Gentle battery optimization hint for Oppo/Android OEMs
+                  if (context.mounted) {
+                    await showDialog(
+                      context: context,
+                      builder: (_) => AlertDialog(
+                        title: const Text('Improve reliability'),
+                        content: const Text(
+                          'For timely reminders, allow Autostart and disable battery optimization for Care Minder in system settings.',
+                        ),
+                        actions: [
+                          TextButton(
+                            onPressed: () => Navigator.pop(context),
+                            child: const Text('OK'),
+                          ),
+                        ],
                       ),
                     );
                   }
@@ -233,6 +281,25 @@ class SchedulePage extends StatelessWidget {
                         ),
                       ],
                     ),
+
+                  const SizedBox(height: 16),
+
+                  // interval selector (overrides medicine frequency)
+                  DropdownButtonFormField<String>(
+                    value: interval,
+                    items: const [
+                      DropdownMenuItem(value: 'Daily', child: Text('Daily (once/day)')),
+                      DropdownMenuItem(value: 'q2h', child: Text('Every 2 hours')),
+                      DropdownMenuItem(value: 'q4h', child: Text('Every 4 hours')),
+                      DropdownMenuItem(value: 'q6h', child: Text('Every 6 hours')),
+                      DropdownMenuItem(value: 'q12h', child: Text('Every 12 hours')),
+                    ],
+                    onChanged: (val) => setState(() => interval = val ?? 'Daily'),
+                    decoration: const InputDecoration(
+                      labelText: 'Interval',
+                      border: OutlineInputBorder(),
+                    ),
+                  ),
 
                   const SizedBox(height: 24),
 
@@ -500,10 +567,7 @@ class SchedulePage extends StatelessWidget {
                             subtitle: Text(
                               "Dosage: ${med["dosage"] ?? "Not specified"}",
                             ),
-                            trailing: const Icon(
-                              Icons.schedule,
-                              color: Colors.blue,
-                            ),
+                            // trailing icon removed per request
                             onTap: () => _showScheduleDialog(
                               context,
                               med["name"] ?? "",

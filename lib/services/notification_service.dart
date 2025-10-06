@@ -2,6 +2,8 @@
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:timezone/data/latest_all.dart' as tzdata;
 import 'package:timezone/timezone.dart' as tz;
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 
 class NotificationService {
   static final FlutterLocalNotificationsPlugin _notifications =
@@ -54,6 +56,12 @@ class NotificationService {
   static int _generateId(String tag, int weekday) {
     final base = tag.hashCode.abs() % 1000000;
     return base * 10 + (weekday % 10);
+  }
+
+  static int _generateIdWithSlot(String tag, int weekday, int slotIndex) {
+    final base = tag.hashCode.abs() % 100000;
+    // Compose ID as: base * 100 + weekday(1..7)*10 + slot(0..9)
+    return base * 100 + (weekday % 10) * 10 + (slotIndex % 10);
   }
 
   static Future<void> cancelNotificationsForTag(String tag) async {
@@ -123,6 +131,67 @@ class NotificationService {
     }
   }
 
+  /// Schedule multiple times per selected weekday using an hourly interval anchor
+  static Future<void> scheduleIntervalWeekly({
+    required String tag,
+    required String title,
+    required String body,
+    required int anchorHour,
+    required int anchorMinute,
+    required int intervalHours, // 2,4,6,12
+    required List<int> weekdays,
+  }) async {
+    try {
+      await init();
+
+      const AndroidNotificationDetails androidDetails =
+          AndroidNotificationDetails(
+            'med_channel',
+            'Medicine Reminders',
+            channelDescription: 'Reminders to take your medicines',
+            importance: Importance.high,
+            priority: Priority.high,
+            playSound: true,
+            enableVibration: true,
+          );
+
+      const NotificationDetails details = NotificationDetails(
+        android: androidDetails,
+      );
+
+      final int occurrencesPerDay = (24 / intervalHours).floor();
+      for (final weekday in weekdays) {
+        for (int i = 0; i < occurrencesPerDay; i++) {
+          final int hour = (anchorHour + i * intervalHours) % 24;
+          final int minute = anchorMinute;
+          final scheduledDate = _nextInstanceOfWeekdayAndTime(
+            hour,
+            minute,
+            weekday,
+          );
+          final id = _generateIdWithSlot(tag, weekday, i);
+
+          await _notifications.zonedSchedule(
+            id,
+            title,
+            body,
+            scheduledDate,
+            details,
+            androidScheduleMode: AndroidScheduleMode.inexactAllowWhileIdle,
+            matchDateTimeComponents: DateTimeComponents.dayOfWeekAndTime,
+          );
+
+          print('📅 Interval schedule $tag weekday $weekday at $hour:$minute (slot $i)');
+        }
+      }
+
+      print('✅ Interval weekly scheduling completed for: $tag');
+    } catch (e) {
+      print('❌ Error in interval weekly scheduling for $tag: $e');
+      rethrow;
+    }
+  }
+
   static tz.TZDateTime _nextInstanceOfWeekdayAndTime(
     int hour,
     int minute,
@@ -151,10 +220,11 @@ class NotificationService {
   static Future<void> scheduleTestNotification() async {
     try {
       await init();
+      // Ensure permissions for Android 13+
+      await requestPermissions();
 
-      final scheduledDate = tz.TZDateTime.now(
-        tz.local,
-      ).add(const Duration(seconds: 10));
+      final now = tz.TZDateTime.now(tz.local);
+      final scheduledDate = now.add(const Duration(seconds: 10));
 
       const AndroidNotificationDetails androidDetails =
           AndroidNotificationDetails(
@@ -171,13 +241,25 @@ class NotificationService {
         android: androidDetails,
       );
 
-      await _notifications.zonedSchedule(
+      try {
+        await _notifications.zonedSchedule(
         999,
         "Test Reminder - Care Minder",
         "This is a test notification to verify that reminders are working properly.",
         scheduledDate,
         details,
         androidScheduleMode: AndroidScheduleMode.inexactAllowWhileIdle,
+        );
+      } catch (e) {
+        // Fallback: show immediate notification if scheduling fails
+        await _notifications.show(999, "Test Reminder - Care Minder",
+            "This is an instant fallback test notification.", details);
+      }
+
+      // Log to history so it appears in NotificationPage
+      await _logNotificationHistory(
+        status: 'Test',
+        medicineName: 'Test Reminder - Care Minder',
       );
 
       print('🧪 Test notification scheduled for 10 seconds from now');
@@ -210,6 +292,11 @@ class NotificationService {
       );
 
       await _notifications.show(0, title, body, details);
+      // Log to history so it appears in NotificationPage
+      await _logNotificationHistory(
+        status: 'Test',
+        medicineName: title,
+      );
       print('🔔 Instant notification shown: $title');
     } catch (e) {
       print('❌ Error showing instant notification: $e');
@@ -323,6 +410,25 @@ class NotificationService {
     return false;
   }
 
+  /// Request exact alarm permission on supported Android versions
+  static Future<bool> requestExactAlarmsPermission() async {
+    final AndroidFlutterLocalNotificationsPlugin? androidImplementation =
+        _notifications
+            .resolvePlatformSpecificImplementation<
+              AndroidFlutterLocalNotificationsPlugin
+            >();
+
+    if (androidImplementation == null) return false;
+
+    try {
+      final bool? granted =
+          await androidImplementation.requestExactAlarmsPermission();
+      return granted ?? false;
+    } catch (_) {
+      return false;
+    }
+  }
+
   /// Cancel all pending notifications
   static Future<void> cancelAllNotifications() async {
     await _notifications.cancelAll();
@@ -354,8 +460,37 @@ class NotificationService {
       );
 
       await _notifications.show(id, title, body, details);
+      // Log generic notifications as well
+      await _logNotificationHistory(
+        status: 'Reminder',
+        medicineName: title,
+      );
     } catch (e) {
       print('❌ Error showing simple notification: $e');
     }
+  }
+}
+
+// Firestore logging helper for Notification history
+Future<void> _logNotificationHistory({
+  required String status,
+  String? medicineName,
+}) async {
+  try {
+    final user = FirebaseAuth.instance.currentUser;
+    if (user == null) return;
+
+    await FirebaseFirestore.instance
+        .collection('users')
+        .doc(user.uid)
+        .collection('history')
+        .add({
+          'medicineName': medicineName ?? 'Notification',
+          'status': status,
+          'timestamp': FieldValue.serverTimestamp(),
+        });
+  } catch (e) {
+    // Swallow errors to avoid breaking notification flow
+    // Intentionally no rethrow
   }
 }

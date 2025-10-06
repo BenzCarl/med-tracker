@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
-import 'package:med_tracker/pages/dashboard_page.dart';
+import '../common/dashboard_page.dart';
 
 class HistoryPage extends StatelessWidget {
   const HistoryPage({super.key});

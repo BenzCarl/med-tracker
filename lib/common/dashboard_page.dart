@@ -1,12 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
-import 'package:med_tracker/pages/edit_medicine_page.dart';
-import 'add_illness_page.dart';
-import 'add_medicine_page.dart';
-import 'schedule_page.dart';
-import 'inventory_page.dart';
-import 'history_page.dart';
-import 'profile_page.dart';
+import '../medicines/edit_medicine_page.dart';
+import '../illness/add_illness_page.dart';
+import '../medicines/add_medicine_page.dart';
+import '../schedule/schedule_page.dart';
+import '../inventory/inventory_page.dart';
+import '../history/history_page.dart';
+import '../profile/profile_page.dart';
+import '../notification/notification_page.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 
 class DashboardPage extends StatefulWidget {
@@ -76,7 +77,13 @@ class _DashboardPageState extends State<DashboardPage> {
         ),
         actions: [
           IconButton(
-            onPressed: () {},
+            onPressed: () {
+              Navigator.of(context).push(
+                MaterialPageRoute(
+                  builder: (context) => const NotificationPage(),
+                ),
+              );
+            },
             icon: const Icon(Icons.notifications_none),
           ),
           IconButton(
@@ -284,45 +291,36 @@ class HomeContent extends StatelessWidget {
                                       )
                                       .get(),
                                   builder: (context, snapshot) {
-                                    if (!snapshot.hasData ||
-                                        snapshot.data!.docs.isEmpty) {
-                                      return Row(
-                                        children: [
-                                          const Icon(
-                                            Icons.inventory_2,
-                                            size: 16,
-                                          ),
-                                          const SizedBox(width: 4),
-                                          const Expanded(
-                                            child: Text("No stock"),
-                                          ),
-                                        ],
-                                      );
+                                    final int initialStock = (() {
+                                      final val = med["initialStock"];
+                                      if (val is int) return val;
+                                      if (val is String) return int.tryParse(val) ?? 0;
+                                      if (val is double) return val.toInt();
+                                      return 0;
+                                    })();
+
+                                    int purchasesSum = 0;
+                                    if (snapshot.hasData && snapshot.data!.docs.isNotEmpty) {
+                                      purchasesSum = snapshot.data!.docs.fold<int>(0, (sum, doc) {
+                                        final q = doc["quantity"];
+                                        if (q is int) return sum + q;
+                                        if (q is double) return sum + q.toInt();
+                                        if (q is String) return sum + (int.tryParse(q) ?? 0);
+                                        return sum;
+                                      });
                                     }
-                                    int totalQuantity = snapshot.data!.docs
-                                        .fold<int>(0, (sum, doc) {
-                                          final q = doc["quantity"];
-                                          if (q is int) return sum + q;
-                                          if (q is double)
-                                            return sum + q.toInt();
-                                          if (q is String)
-                                            return sum + (int.tryParse(q) ?? 0);
-                                          return sum;
-                                        });
-                                    if (totalQuantity == 0) {
+
+                                    final int totalQuantity = initialStock + purchasesSum;
+
+                                    if (totalQuantity <= 0) {
                                       return Row(
-                                        children: [
-                                          const Icon(
-                                            Icons.inventory_2,
-                                            size: 16,
-                                          ),
-                                          const SizedBox(width: 4),
-                                          const Expanded(
+                                        children: const [
+                                          Icon(Icons.inventory_2, size: 16),
+                                          SizedBox(width: 4),
+                                          Expanded(
                                             child: Text(
                                               "No stock",
-                                              style: TextStyle(
-                                                color: Colors.red,
-                                              ),
+                                              style: TextStyle(color: Colors.red),
                                             ),
                                           ),
                                         ],

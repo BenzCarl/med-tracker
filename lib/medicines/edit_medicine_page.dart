@@ -17,6 +17,7 @@ class _EditMedicinePageState extends State<EditMedicinePage> {
   late TextEditingController startDateController;
   late TextEditingController endDateController;
   String? selectedIllness;
+  String? selectedFrequency;
 
   // Schedule fields
   DocumentSnapshot? scheduleDoc;
@@ -34,6 +35,7 @@ class _EditMedicinePageState extends State<EditMedicinePage> {
     startDateController = TextEditingController(text: med["startDate"]);
     endDateController = TextEditingController(text: med["endDate"]);
     selectedIllness = med["illness"];
+    selectedFrequency = med["frequency"];
     _fetchSchedule();
   }
 
@@ -92,6 +94,7 @@ class _EditMedicinePageState extends State<EditMedicinePage> {
       "startDate": startDateController.text,
       "endDate": endDateController.text,
       "illness": selectedIllness,
+      "frequency": selectedFrequency,
     });
 
     // If schedule exists, update it
@@ -139,6 +142,22 @@ class _EditMedicinePageState extends State<EditMedicinePage> {
             TextField(
               controller: descriptionController,
               decoration: const InputDecoration(labelText: "Description"),
+            ),
+            const SizedBox(height: 8),
+            DropdownButtonFormField<String>(
+              value: selectedFrequency,
+              decoration: const InputDecoration(labelText: "Frequency"),
+              items: const [
+                "Every 2 hours",
+                "Every 4 hours",
+                "Every 6 hours",
+                "Every 12 hours",
+                "Daily",
+                "Weekdays",
+                "Weekends",
+                "Custom",
+              ].map((e) => DropdownMenuItem(value: e, child: Text(e))).toList(),
+              onChanged: (v) => setState(() => selectedFrequency = v),
             ),
             TextField(
               controller: startDateController,

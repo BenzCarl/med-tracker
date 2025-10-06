@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:intl/intl.dart';
-import 'package:med_tracker/pages/add_illness_page.dart';
+import '../illness/add_illness_page.dart';
 
 class ProfilePage extends StatefulWidget {
   const ProfilePage({Key? key}) : super(key: key);
@@ -20,6 +20,7 @@ class _ProfilePageState extends State<ProfilePage> {
   final TextEditingController _illnessController = TextEditingController();
 
   bool _isEditing = false;
+  List<String> _illnesses = [];
 
   @override
   void initState() {
@@ -47,8 +48,10 @@ class _ProfilePageState extends State<ProfilePage> {
           if (data['illnesses'] != null) {
             List<dynamic> illnesses = data['illnesses'];
             _illnessController.text = illnesses.join(", ");
+            _illnesses = List<String>.from(illnesses.map((e) => e.toString()));
           } else {
             _illnessController.text = "";
+            _illnesses = [];
           }
 
           // ✅ DOB from Firestore
@@ -76,6 +79,127 @@ class _ProfilePageState extends State<ProfilePage> {
         });
       }
     }
+  }
+
+  Future<void> _renameIllness(String oldName) async {
+    final controller = TextEditingController(text: oldName);
+    final user = FirebaseAuth.instance.currentUser;
+    if (user == null) return;
+    final newName = await showDialog<String>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text("Rename Illness"),
+        content: TextField(
+          controller: controller,
+          decoration: const InputDecoration(labelText: "New name"),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: const Text("Cancel"),
+          ),
+          ElevatedButton(
+            onPressed: () => Navigator.pop(ctx, controller.text.trim()),
+            child: const Text("Save"),
+          ),
+        ],
+      ),
+    );
+    if (newName == null || newName.isEmpty || newName == oldName) return;
+
+    // Update illnesses array
+    final userRef = FirebaseFirestore.instance.collection('users').doc(user.uid);
+    await userRef.set({
+      'illnesses': FieldValue.arrayRemove([oldName]),
+    }, SetOptions(merge: true));
+    await userRef.set({
+      'illnesses': FieldValue.arrayUnion([newName]),
+    }, SetOptions(merge: true));
+
+    // Ask to propagate rename to medicines
+    final propagate = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text("Update Medicines?"),
+        content: Text(
+          "Do you want to update medicines referencing '$oldName' to '$newName'?",
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: const Text("No"),
+          ),
+          ElevatedButton(
+            onPressed: () => Navigator.pop(ctx, true),
+            child: const Text("Yes"),
+          ),
+        ],
+      ),
+    );
+
+    if (propagate == true) {
+      final meds = await FirebaseFirestore.instance
+          .collection('users')
+          .doc(user.uid)
+          .collection('medicines')
+          .where('illness', isEqualTo: oldName)
+          .get();
+      for (final doc in meds.docs) {
+        await doc.reference.update({'illness': newName});
+      }
+    }
+
+    await _loadUserData();
+  }
+
+  Future<void> _deleteIllness(String illness) async {
+    final user = FirebaseAuth.instance.currentUser;
+    if (user == null) return;
+
+    final choice = await showDialog<String>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text("Delete Illness"),
+        content: const Text(
+          "Deleting an illness won't delete medicines. You can also clear this illness from medicines.",
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, 'cancel'),
+            child: const Text("Cancel"),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, 'delete_only'),
+            child: const Text("Delete Only"),
+          ),
+          ElevatedButton(
+            onPressed: () => Navigator.pop(ctx, 'delete_and_clear'),
+            child: const Text("Delete and Clear from Medicines"),
+          ),
+        ],
+      ),
+    );
+
+    if (choice == null || choice == 'cancel') return;
+
+    final userRef = FirebaseFirestore.instance.collection('users').doc(user.uid);
+    await userRef.set({
+      'illnesses': FieldValue.arrayRemove([illness]),
+    }, SetOptions(merge: true));
+
+    if (choice == 'delete_and_clear') {
+      final meds = await FirebaseFirestore.instance
+          .collection('users')
+          .doc(user.uid)
+          .collection('medicines')
+          .where('illness', isEqualTo: illness)
+          .get();
+      for (final doc in meds.docs) {
+        await doc.reference.update({'illness': FieldValue.delete()});
+      }
+    }
+
+    await _loadUserData();
   }
 
   void _pickDate() async {
@@ -235,7 +359,7 @@ class _ProfilePageState extends State<ProfilePage> {
 
             TextField(
               controller: _emailController,
-              readOnly: _isEditing,
+              readOnly: !_isEditing,
               decoration: const InputDecoration(
                 labelText: "Email",
                 border: OutlineInputBorder(),
@@ -286,6 +410,44 @@ class _ProfilePageState extends State<ProfilePage> {
                 border: OutlineInputBorder(),
               ),
             ),
+
+            const SizedBox(height: 12),
+
+            // Illness management list
+            if (_illnesses.isNotEmpty)
+              Card(
+                child: Padding(
+                  padding: const EdgeInsets.all(12.0),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const Text(
+                        "Manage Illnesses",
+                        style: TextStyle(fontWeight: FontWeight.bold),
+                      ),
+                      const SizedBox(height: 8),
+                      ..._illnesses.map((i) => ListTile(
+                            title: Text(i),
+                            trailing: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                IconButton(
+                                  icon: const Icon(Icons.edit),
+                                  onPressed: () => _renameIllness(i),
+                                  tooltip: 'Rename',
+                                ),
+                                IconButton(
+                                  icon: const Icon(Icons.delete, color: Colors.red),
+                                  onPressed: () => _deleteIllness(i),
+                                  tooltip: 'Delete',
+                                ),
+                              ],
+                            ),
+                          )),
+                    ],
+                  ),
+                ),
+              ),
 
             const SizedBox(height: 20),
             Center(

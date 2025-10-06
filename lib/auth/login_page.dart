@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
-import 'package:med_tracker/pages/dashboard_page.dart';
+import '../common/dashboard_page.dart';
 import 'register_page.dart';
 
 class LoginPage extends StatefulWidget {
@@ -31,10 +31,18 @@ class _LoginPageState extends State<LoginPage> {
   }
 
   Future<void> _login() async {
+    final email = emailController.text.trim();
+    final password = passwordController.text.trim();
+
+    if (email.isEmpty || password.isEmpty) {
+      _showSnackBar("Please enter email and password", error: true);
+      return;
+    }
+
     try {
       await FirebaseAuth.instance.signInWithEmailAndPassword(
-        email: emailController.text.trim(),
-        password: passwordController.text.trim(),
+        email: email,
+        password: password,
       );
       _showSnackBar("Login successful!");
       Navigator.pushReplacement(
@@ -42,7 +50,18 @@ class _LoginPageState extends State<LoginPage> {
         MaterialPageRoute(builder: (_) => const DashboardPage()),
       );
     } on FirebaseAuthException catch (e) {
-      _showSnackBar(e.message ?? "Login failed", error: true);
+      if (e.code == 'wrong-password') {
+        _showSnackBar("Incorrect password", error: true);
+        passwordController.clear();
+      } else if (e.code == 'user-not-found') {
+        _showSnackBar("Email not registered", error: true);
+        emailController.clear();
+        passwordController.clear();
+      } else if (e.code == 'invalid-email') {
+        _showSnackBar("Invalid email format", error: true);
+      } else {
+        _showSnackBar(e.message ?? "Login failed", error: true);
+      }
     }
   }
 
