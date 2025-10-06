@@ -69,10 +69,10 @@ class _DashboardPageState extends State<DashboardPage> {
           _selectedIndex == 0
               ? "Home"
               : _selectedIndex == 1
-              ? "Timetable"
+              ? "Care Minder"
               : _selectedIndex == 2
-              ? "Inventory"
-              : "Medication History",
+              ? "Care Minder"
+              : "Care Minder",
         ),
         actions: [
           IconButton(
@@ -209,80 +209,163 @@ class HomeContent extends StatelessWidget {
                           subtitle: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              Text("Dosage: ${med["dosage"] ?? ""}"),
-                              Text("Illness: ${med["illness"] ?? ""}"),
-                              Text("Start: ${med["startDate"] ?? ""}"),
-                              Text("End: ${med["endDate"] ?? ""}"),
-                              FutureBuilder<QuerySnapshot>(
-                                future: FirebaseFirestore.instance
-                                    .collection("users")
-                                    .doc(user.uid)
-                                    .collection("schedules")
-                                    .where(
-                                      "medicineName",
-                                      isEqualTo: med["name"],
-                                    )
-                                    .limit(1)
-                                    .get(),
-                                builder: (context, snapshot) {
-                                  if (!snapshot.hasData ||
-                                      snapshot.data!.docs.isEmpty) {
-                                    return const Text("No schedule set");
-                                  }
-                                  final schedule =
-                                      snapshot.data!.docs.first.data()
-                                          as Map<String, dynamic>;
-                                  return Text(
-                                    "Next Intake: ${schedule["time"] ?? ""} (${(schedule["days"] as List).join(", ")})",
-                                  );
-                                },
+                              Wrap(
+                                crossAxisAlignment: WrapCrossAlignment.center,
+                                spacing: 4,
+                                children: [
+                                  const Icon(Icons.info_outline, size: 16),
+                                  Text("Dosage: ${med["dosage"] ?? ""}"),
+                                ],
                               ),
-                              FutureBuilder<QuerySnapshot>(
-                                future: FirebaseFirestore.instance
-                                    .collection("users")
-                                    .doc(user.uid)
-                                    .collection("inventory")
-                                    .where(
-                                      "medicineName",
-                                      isEqualTo: med["name"],
-                                    )
-                                    .get(),
-                                builder: (context, snapshot) {
-                                  if (!snapshot.hasData ||
-                                      snapshot.data!.docs.isEmpty) {
-                                    return const Text("No stock");
-                                  }
-                                  // Sum all quantities for this medicine
-                                  int totalQuantity = snapshot.data!.docs
-                                      .fold<int>(0, (sum, doc) {
-                                        final q = doc["quantity"];
-                                        if (q is int) return sum + q;
-                                        if (q is double) return sum + q.toInt();
-                                        if (q is String)
-                                          return sum + (int.tryParse(q) ?? 0);
-                                        return sum;
-                                      });
-                                  if (totalQuantity == 0) {
-                                    return const Text(
-                                      "No stock",
-                                      style: TextStyle(color: Colors.red),
+                              Wrap(
+                                crossAxisAlignment: WrapCrossAlignment.center,
+                                spacing: 4,
+                                children: [
+                                  const Icon(Icons.local_hospital, size: 16),
+                                  Text("Illness: ${med["illness"] ?? ""}"),
+                                ],
+                              ),
+                              Padding(
+                                padding: const EdgeInsets.only(top: 4.0),
+                                child: FutureBuilder<QuerySnapshot>(
+                                  future: FirebaseFirestore.instance
+                                      .collection("users")
+                                      .doc(user.uid)
+                                      .collection("schedules")
+                                      .where(
+                                        "medicineName",
+                                        isEqualTo: med["name"],
+                                      )
+                                      .limit(1)
+                                      .get(),
+                                  builder: (context, snapshot) {
+                                    if (!snapshot.hasData ||
+                                        snapshot.data!.docs.isEmpty) {
+                                      return Row(
+                                        children: [
+                                          const Icon(Icons.schedule, size: 16),
+                                          const SizedBox(width: 4),
+                                          const Expanded(
+                                            child: Text("No schedule set"),
+                                          ),
+                                        ],
+                                      );
+                                    }
+                                    final schedule =
+                                        snapshot.data!.docs.first.data()
+                                            as Map<String, dynamic>;
+                                    return Row(
+                                      crossAxisAlignment:
+                                          CrossAxisAlignment.start,
+                                      children: [
+                                        const Icon(Icons.schedule, size: 16),
+                                        const SizedBox(width: 4),
+                                        Expanded(
+                                          child: Text(
+                                            "Next Intake: ${schedule["time"] ?? ""} (${(schedule["days"] as List).join(", ")})",
+                                            overflow: TextOverflow.visible,
+                                          ),
+                                        ),
+                                      ],
                                     );
-                                  } else if (totalQuantity < 10) {
-                                    return Text(
-                                      "Low stock: $totalQuantity",
-                                      style: const TextStyle(
-                                        color: Colors.orange,
-                                      ),
-                                    );
-                                  } else {
-                                    return Text(
-                                      "Stock left: $totalQuantity",
-                                      style: const TextStyle(
-                                        color: Colors.green,
-                                      ),
-                                    );
-                                  }
-                                },
+                                  },
+                                ),
+                              ),
+                              Padding(
+                                padding: const EdgeInsets.only(top: 4.0),
+                                child: FutureBuilder<QuerySnapshot>(
+                                  future: FirebaseFirestore.instance
+                                      .collection("users")
+                                      .doc(user.uid)
+                                      .collection("inventory")
+                                      .where(
+                                        "medicineName",
+                                        isEqualTo: med["name"],
+                                      )
+                                      .get(),
+                                  builder: (context, snapshot) {
+                                    if (!snapshot.hasData ||
+                                        snapshot.data!.docs.isEmpty) {
+                                      return Row(
+                                        children: [
+                                          const Icon(
+                                            Icons.inventory_2,
+                                            size: 16,
+                                          ),
+                                          const SizedBox(width: 4),
+                                          const Expanded(
+                                            child: Text("No stock"),
+                                          ),
+                                        ],
+                                      );
+                                    }
+                                    int totalQuantity = snapshot.data!.docs
+                                        .fold<int>(0, (sum, doc) {
+                                          final q = doc["quantity"];
+                                          if (q is int) return sum + q;
+                                          if (q is double)
+                                            return sum + q.toInt();
+                                          if (q is String)
+                                            return sum + (int.tryParse(q) ?? 0);
+                                          return sum;
+                                        });
+                                    if (totalQuantity == 0) {
+                                      return Row(
+                                        children: [
+                                          const Icon(
+                                            Icons.inventory_2,
+                                            size: 16,
+                                          ),
+                                          const SizedBox(width: 4),
+                                          const Expanded(
+                                            child: Text(
+                                              "No stock",
+                                              style: TextStyle(
+                                                color: Colors.red,
+                                              ),
+                                            ),
+                                          ),
+                                        ],
+                                      );
+                                    } else if (totalQuantity < 10) {
+                                      return Row(
+                                        children: [
+                                          const Icon(
+                                            Icons.inventory_2,
+                                            size: 16,
+                                          ),
+                                          const SizedBox(width: 4),
+                                          Expanded(
+                                            child: Text(
+                                              "Low stock: $totalQuantity",
+                                              style: const TextStyle(
+                                                color: Colors.orange,
+                                              ),
+                                            ),
+                                          ),
+                                        ],
+                                      );
+                                    } else {
+                                      return Row(
+                                        children: [
+                                          const Icon(
+                                            Icons.inventory_2,
+                                            size: 16,
+                                          ),
+                                          const SizedBox(width: 4),
+                                          Expanded(
+                                            child: Text(
+                                              "Stock left: $totalQuantity",
+                                              style: const TextStyle(
+                                                color: Colors.green,
+                                              ),
+                                            ),
+                                          ),
+                                        ],
+                                      );
+                                    }
+                                  },
+                                ),
                               ),
                             ],
                           ),

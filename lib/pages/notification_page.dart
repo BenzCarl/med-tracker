@@ -1,10 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
-import 'package:med_tracker/pages/dashboard_page.dart';
 
-class HistoryPage extends StatelessWidget {
-  const HistoryPage({super.key});
+class NotificationPage extends StatelessWidget {
+  const NotificationPage({super.key});
 
   @override
   Widget build(BuildContext context) {
@@ -15,14 +14,11 @@ class HistoryPage extends StatelessWidget {
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text("Intake History"),
+        title: const Text("Care Minder"),
         leading: IconButton(
           icon: const Icon(Icons.arrow_back),
           onPressed: () {
-            Navigator.pushReplacement(
-              context,
-              MaterialPageRoute(builder: (context) => const DashboardPage()),
-            );
+            Navigator.pop(context);
           },
         ),
       ),
@@ -30,7 +26,9 @@ class HistoryPage extends StatelessWidget {
         stream: FirebaseFirestore.instance
             .collection("users")
             .doc(user.uid)
-            .collection("history")
+            .collection(
+              "history",
+            ) // or "notifications" if you use a separate collection
             .orderBy("timestamp", descending: true)
             .snapshots(),
         builder: (context, snapshot) {

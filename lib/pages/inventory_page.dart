@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:med_tracker/pages/dashboard_page.dart';
 
 class InventoryPage extends StatelessWidget {
   const InventoryPage({super.key});
@@ -11,16 +12,14 @@ class InventoryPage extends StatelessWidget {
 
     showModalBottomSheet(
       context: context,
-      isScrollControlled: true, // <-- important!
+      isScrollControlled: true,
       builder: (ctx) {
         return Padding(
           padding: EdgeInsets.only(
             left: 16,
             right: 16,
             top: 16,
-            bottom:
-                MediaQuery.of(ctx).viewInsets.bottom +
-                16, // <-- handles keyboard
+            bottom: MediaQuery.of(ctx).viewInsets.bottom + 16,
           ),
           child: SingleChildScrollView(
             child: Column(
@@ -104,7 +103,18 @@ class InventoryPage extends StatelessWidget {
     }
 
     return Scaffold(
-      appBar: AppBar(title: const Text("Medicine Inventory")),
+      appBar: AppBar(
+        title: const Text("Care Minder"),
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back),
+          onPressed: () {
+            Navigator.pushReplacement(
+              context,
+              MaterialPageRoute(builder: (context) => const DashboardPage()),
+            );
+          },
+        ),
+      ),
       body: Padding(
         padding: const EdgeInsets.all(16.0),
         child: StreamBuilder<QuerySnapshot>(
