@@ -98,12 +98,34 @@ class SchedulePage extends StatelessWidget {
               // ✅ Cancel old notifications
               await NotificationService.cancelNotificationsForTag(medicineName);
 
-              // ✅ Schedule new weekly notifications (inexact mode)
+              // ✅ Schedule new weekly notifications with exact time if possible
               if (weekdaysInts.isNotEmpty) {
                 try {
                   if (interval == "Daily") {
+                    // Try to request exact alarm permission for precise firing
+                    final exactGranted = await NotificationService.requestExactAlarmsPermission();
                     // schedule once per selected day
-                    await NotificationService.scheduleWeekly(
+                    if (exactGranted) {
+                      await NotificationService.scheduleWeeklyExact(
+                        tag: medicineName,
+                        title: "Take your $medicineName",
+                        body: "Dosage: $dosage",
+                        hour: selectedTime!.hour,
+                        minute: selectedTime!.minute,
+                        weekdays: weekdaysInts,
+                      );
+                    } else {
+                      await NotificationService.scheduleWeekly(
+                        tag: medicineName,
+                        title: "Take your $medicineName",
+                        body: "Dosage: $dosage",
+                        hour: selectedTime!.hour,
+                        minute: selectedTime!.minute,
+                        weekdays: weekdaysInts,
+                      );
+                    }
+                    // Also schedule a one-shot immediate exact to ensure near-time reminders fire
+                    await NotificationService.scheduleOneShotExactNext(
                       tag: medicineName,
                       title: "Take your $medicineName",
                       body: "Dosage: $dosage",
@@ -112,6 +134,8 @@ class SchedulePage extends StatelessWidget {
                       weekdays: weekdaysInts,
                     );
                   } else {
+                    // For interval modes, prefer exact scheduling when permission is granted
+                    final exactGranted = await NotificationService.requestExactAlarmsPermission();
                     // map interval code
                     final intervalHours = interval == "q2h"
                         ? 2
@@ -120,13 +144,34 @@ class SchedulePage extends StatelessWidget {
                             : interval == "q6h"
                                 ? 6
                                 : 12;
-                    await NotificationService.scheduleIntervalWeekly(
+                    if (exactGranted) {
+                      await NotificationService.scheduleIntervalWeeklyExact(
+                        tag: medicineName,
+                        title: "Take your $medicineName",
+                        body: "Dosage: $dosage",
+                        anchorHour: selectedTime!.hour,
+                        anchorMinute: selectedTime!.minute,
+                        intervalHours: intervalHours,
+                        weekdays: weekdaysInts,
+                      );
+                    } else {
+                      await NotificationService.scheduleIntervalWeekly(
+                        tag: medicineName,
+                        title: "Take your $medicineName",
+                        body: "Dosage: $dosage",
+                        anchorHour: selectedTime!.hour,
+                        anchorMinute: selectedTime!.minute,
+                        intervalHours: intervalHours,
+                        weekdays: weekdaysInts,
+                      );
+                    }
+                    // Also schedule a one-shot immediate exact for the next upcoming slot today
+                    await NotificationService.scheduleOneShotExactNext(
                       tag: medicineName,
                       title: "Take your $medicineName",
                       body: "Dosage: $dosage",
-                      anchorHour: selectedTime!.hour,
-                      anchorMinute: selectedTime!.minute,
-                      intervalHours: intervalHours,
+                      hour: selectedTime!.hour,
+                      minute: selectedTime!.minute,
                       weekdays: weekdaysInts,
                     );
                   }
@@ -139,6 +184,11 @@ class SchedulePage extends StatelessWidget {
                         backgroundColor: Colors.green,
                       ),
                     );
+                    // Log to history as Scheduled so it appears in Notification page
+                    await NotificationService.logHistory(
+                      status: 'Scheduled',
+                      medicineName: medicineName,
+                    );
                   }
 
                   // Gentle battery optimization hint for Oppo/Android OEMs
@@ -147,8 +197,16 @@ class SchedulePage extends StatelessWidget {
                       context: context,
                       builder: (_) => AlertDialog(
                         title: const Text('Improve reliability'),
-                        content: const Text(
-                          'For timely reminders, allow Autostart and disable battery optimization for Care Minder in system settings.',
+                        content: Column(
+                          mainAxisSize: MainAxisSize.min,
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: const [
+                            Text('For timely reminders:'),
+                            SizedBox(height: 8),
+                            Text('• Allow Autostart for Care Minder'),
+                            Text('• Disable battery optimization for Care Minder'),
+                            Text('• Enable Exact Alarms (Android 12/13+)'),
+                          ],
                         ),
                         actions: [
                           TextButton(
@@ -168,6 +226,29 @@ class SchedulePage extends StatelessWidget {
                           "⚠️ Schedule saved but notification setup failed",
                         ),
                         backgroundColor: Colors.orange,
+                      ),
+                    );
+                    // Offer to open exact alarm settings if scheduling failed and might be due to missing permission
+                    await showDialog(
+                      context: context,
+                      builder: (_) => AlertDialog(
+                        title: const Text('Enable Exact Alarms'),
+                        content: const Text(
+                          'To ensure reminders fire exactly at the chosen time, please enable Exact Alarms in system settings.',
+                        ),
+                        actions: [
+                          TextButton(
+                            onPressed: () => Navigator.pop(context),
+                            child: const Text('Cancel'),
+                          ),
+                          TextButton(
+                            onPressed: () async {
+                              Navigator.pop(context);
+                              await NotificationService.openExactAlarmSettings();
+                            },
+                            child: const Text('Open Settings'),
+                          ),
+                        ],
                       ),
                     );
                   }
