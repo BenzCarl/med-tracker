@@ -346,6 +346,149 @@ class NotificationService {
     }
   }
 
+  /// Schedule notifications at minute intervals (EXACT) - for 2-minute reminders
+  static Future<void> scheduleIntervalMinutesExact({
+    required String tag,
+    required String title,
+    required String body,
+    required int intervalMinutes,
+    required List<int> weekdays,
+  }) async {
+    try {
+      await init();
+
+      const AndroidNotificationDetails androidDetails =
+          AndroidNotificationDetails(
+        'med_channel',
+        'Medicine Reminders',
+        channelDescription: 'Reminders to take your medicines',
+        importance: Importance.high,
+        priority: Priority.high,
+        playSound: true,
+        enableVibration: true,
+        fullScreenIntent: true,
+      );
+
+      const NotificationDetails details = NotificationDetails(
+        android: androidDetails,
+      );
+
+      final now = tz.TZDateTime.now(tz.local);
+      
+      // Limit to next 4 hours to avoid scheduling too many notifications at once
+      final int hoursToSchedule = 4;
+      final int notificationsToSchedule = (hoursToSchedule * 60 / intervalMinutes).floor();
+      int scheduled = 0;
+
+      for (int i = 0; i < notificationsToSchedule; i++) {
+        final scheduledDate = now.add(Duration(minutes: intervalMinutes * (i + 1)));
+        
+        // Only schedule if the day is in the selected weekdays
+        if (weekdays.isEmpty || weekdays.contains(scheduledDate.weekday)) {
+          final id = (tag.hashCode.abs() % 900000) + i;
+
+          await _notifications.zonedSchedule(
+            id,
+            title,
+            body,
+            scheduledDate,
+            details,
+            androidScheduleMode: AndroidScheduleMode.exactAllowWhileIdle,
+            payload: jsonEncode({
+              'tag': tag,
+              'medicineName': tag,
+              'status': 'Reminder',
+              'type': 'interval_minutes_exact',
+              'intervalMinutes': intervalMinutes,
+            }),
+          );
+
+          scheduled++;
+          if (i < 5 || i >= notificationsToSchedule - 2) {
+            // Only print first 5 and last 2 to avoid log spam
+            print('📅 [EXACT+FULLSCREEN] Scheduled for $tag on weekday ${scheduledDate.weekday} at ${scheduledDate.hour}:${scheduledDate.minute.toString().padLeft(2, '0')}');
+          }
+        }
+      }
+
+      print('✅ [EXACT] Scheduled $scheduled minute-interval notifications for next $hoursToSchedule hours: $tag');
+    } catch (e) {
+      print('❌ Error scheduling EXACT minute-interval notifications for $tag: $e');
+      rethrow;
+    }
+  }
+
+  /// Schedule notifications at minute intervals (INEXACT) - for 2-minute reminders
+  static Future<void> scheduleIntervalMinutes({
+    required String tag,
+    required String title,
+    required String body,
+    required int intervalMinutes,
+    required List<int> weekdays,
+  }) async {
+    try {
+      await init();
+
+      const AndroidNotificationDetails androidDetails =
+          AndroidNotificationDetails(
+        'med_channel',
+        'Medicine Reminders',
+        channelDescription: 'Reminders to take your medicines',
+        importance: Importance.high,
+        priority: Priority.high,
+        playSound: true,
+        enableVibration: true,
+      );
+
+      const NotificationDetails details = NotificationDetails(
+        android: androidDetails,
+      );
+
+      final now = tz.TZDateTime.now(tz.local);
+      
+      // Limit to next 4 hours to avoid scheduling too many notifications at once
+      final int hoursToSchedule = 4;
+      final int notificationsToSchedule = (hoursToSchedule * 60 / intervalMinutes).floor();
+      int scheduled = 0;
+
+      for (int i = 0; i < notificationsToSchedule; i++) {
+        final scheduledDate = now.add(Duration(minutes: intervalMinutes * (i + 1)));
+        
+        // Only schedule if the day is in the selected weekdays
+        if (weekdays.isEmpty || weekdays.contains(scheduledDate.weekday)) {
+          final id = (tag.hashCode.abs() % 900000) + i;
+
+          await _notifications.zonedSchedule(
+            id,
+            title,
+            body,
+            scheduledDate,
+            details,
+            androidScheduleMode: AndroidScheduleMode.inexactAllowWhileIdle,
+            payload: jsonEncode({
+              'tag': tag,
+              'medicineName': tag,
+              'status': 'Reminder',
+              'type': 'interval_minutes',
+              'intervalMinutes': intervalMinutes,
+            }),
+          );
+
+          scheduled++;
+          if (i < 5 || i >= notificationsToSchedule - 2) {
+            // Only print first 5 and last 2 to avoid log spam
+            print('📅 Scheduled for $tag on weekday ${scheduledDate.weekday} at ${scheduledDate.hour}:${scheduledDate.minute.toString().padLeft(2, '0')}');
+          }
+        }
+      }
+
+      print('✅ Scheduled $scheduled minute-interval notifications for next $hoursToSchedule hours: $tag');
+    } catch (e) {
+      print('❌ Error scheduling minute-interval notifications for $tag: $e');
+      rethrow;
+    }
+  }
+
   static tz.TZDateTime _nextInstanceOfWeekdayAndTime(
     int hour,
     int minute,

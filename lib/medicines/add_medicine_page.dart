@@ -95,49 +95,107 @@ class _AddMedicinePageState extends State<AddMedicinePage> {
 
       // Validate schedule if enabled
       if (_createSchedule && _selectedTime == null) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text("Please select a time for the schedule")),
-        );
-        return;
+        // For minute-based intervals (q2m), auto-set current time since it starts immediately
+        if (_interval == "q2m") {
+          _selectedTime = TimeOfDay.now();
+        } else {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text("Please select a time for the schedule")),
+          );
+          return;
+        }
       }
 
-      final Map<String, dynamic> medData = {
-        "name": _nameController.text,
-        "dosage": "$_dosageValue ${_dosageUnitController.text}",
-        "frequency": _interval, // Add frequency for Firestore rules
-        "description": _descriptionController.text,
-        "startDate": _startDateController.text,
-        "endDate": _endDateController.text,
-        "initialStock": int.tryParse(_stockController.text) ?? 0,
-        "createdAt": FieldValue.serverTimestamp(),
-      };
-      if (_selectedIllness != null && _selectedIllness!.isNotEmpty) {
-        medData["illness"] = _selectedIllness;
-      }
-
-      await FirebaseFirestore.instance
-          .collection("users")
-          .doc(user.uid)
-          .collection("medicines")
-          .add(medData);
-
-      // Create schedule if enabled
-      if (_createSchedule && _selectedTime != null) {
-        await _saveSchedule(user.uid);
-      }
-
+      // Show loading indicator
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(
-              _createSchedule
-                  ? "Medicine added with schedule and notifications set!"
-                  : "Medicine added successfully",
+          const SnackBar(
+            content: Row(
+              children: [
+                SizedBox(
+                  width: 20,
+                  height: 20,
+                  child: CircularProgressIndicator(
+                    strokeWidth: 2,
+                    valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                  ),
+                ),
+                SizedBox(width: 16),
+                Text("Saving medicine and scheduling notifications..."),
+              ],
             ),
-            backgroundColor: Colors.green,
+            duration: Duration(seconds: 10),
           ),
         );
-        Navigator.pop(context); // go back after saving
+      }
+
+      try {
+        final Map<String, dynamic> medData = {
+          "name": _nameController.text,
+          "dosage": "$_dosageValue ${_dosageUnitController.text}",
+          "frequency": _interval, // Add frequency for Firestore rules
+          "description": _descriptionController.text,
+          "startDate": _startDateController.text,
+          "endDate": _endDateController.text,
+          "initialStock": int.tryParse(_stockController.text) ?? 0,
+          "createdAt": FieldValue.serverTimestamp(),
+        };
+        if (_selectedIllness != null && _selectedIllness!.isNotEmpty) {
+          medData["illness"] = _selectedIllness;
+        }
+
+        await FirebaseFirestore.instance
+            .collection("users")
+            .doc(user.uid)
+            .collection("medicines")
+            .add(medData);
+
+        // Create schedule if enabled
+        if (_createSchedule) {
+          // Ensure time is set (should be set by validation above)
+          if (_selectedTime == null && _interval == "q2m") {
+            _selectedTime = TimeOfDay.now();
+          }
+          if (_selectedTime != null) {
+            await _saveSchedule(user.uid);
+          }
+        }
+
+        if (mounted) {
+          ScaffoldMessenger.of(context).clearSnackBars();
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Row(
+                children: [
+                  const Icon(Icons.check_circle, color: Colors.white),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Text(
+                      _createSchedule
+                          ? _interval == "q2m"
+                              ? "Medicine added! Notifications will start in 2 minutes."
+                              : "Medicine added with schedule and notifications set!"
+                          : "Medicine added successfully",
+                    ),
+                  ),
+                ],
+              ),
+              backgroundColor: Colors.green,
+              duration: const Duration(seconds: 3),
+            ),
+          );
+          Navigator.pop(context); // go back after saving
+        }
+      } catch (e) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).clearSnackBars();
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text("Error saving: $e"),
+              backgroundColor: Colors.red,
+            ),
+          );
+        }
       }
     }
   }
@@ -239,43 +297,75 @@ class _AddMedicinePageState extends State<AddMedicinePage> {
             final exactGranted =
                 await NotificationService.requestExactAlarmsPermission();
             // map interval code
-            final intervalHours = _interval == "q2h"
-                ? 2
-                : _interval == "q4h"
-                    ? 4
-                    : _interval == "q6h"
-                        ? 6
-                        : 12;
-            if (exactGranted) {
-              await NotificationService.scheduleIntervalWeeklyExact(
-                tag: medicineName,
-                title: "Take your $medicineName",
-                body: "Dosage: $dosage",
-                anchorHour: _selectedTime!.hour,
-                anchorMinute: _selectedTime!.minute,
-                intervalHours: intervalHours,
-                weekdays: weekdaysInts,
-              );
+            int intervalHours = 0;
+            int intervalMinutes = 0;
+            
+            if (_interval == "q2m") {
+              intervalMinutes = 2;
+            } else if (_interval == "q2h") {
+              intervalHours = 2;
+            } else if (_interval == "q4h") {
+              intervalHours = 4;
+            } else if (_interval == "q6h") {
+              intervalHours = 6;
             } else {
-              await NotificationService.scheduleIntervalWeekly(
+              intervalHours = 12;
+            }
+            
+            if (exactGranted) {
+              if (_interval == "q2m") {
+                // For 2-minute intervals, use minute-based scheduling
+                await NotificationService.scheduleIntervalMinutesExact(
+                  tag: medicineName,
+                  title: "Take your $medicineName",
+                  body: "Dosage: $dosage",
+                  intervalMinutes: intervalMinutes,
+                  weekdays: weekdaysInts,
+                );
+              } else {
+                await NotificationService.scheduleIntervalWeeklyExact(
+                  tag: medicineName,
+                  title: "Take your $medicineName",
+                  body: "Dosage: $dosage",
+                  anchorHour: _selectedTime!.hour,
+                  anchorMinute: _selectedTime!.minute,
+                  intervalHours: intervalHours,
+                  weekdays: weekdaysInts,
+                );
+              }
+            } else {
+              if (_interval == "q2m") {
+                // For 2-minute intervals, use minute-based scheduling
+                await NotificationService.scheduleIntervalMinutes(
+                  tag: medicineName,
+                  title: "Take your $medicineName",
+                  body: "Dosage: $dosage",
+                  intervalMinutes: intervalMinutes,
+                  weekdays: weekdaysInts,
+                );
+              } else {
+                await NotificationService.scheduleIntervalWeekly(
+                  tag: medicineName,
+                  title: "Take your $medicineName",
+                  body: "Dosage: $dosage",
+                  anchorHour: _selectedTime!.hour,
+                  anchorMinute: _selectedTime!.minute,
+                  intervalHours: intervalHours,
+                  weekdays: weekdaysInts,
+                );
+              }
+            }
+            // Only schedule one-shot for non-minute intervals
+            if (_interval != "q2m") {
+              await NotificationService.scheduleOneShotExactNext(
                 tag: medicineName,
                 title: "Take your $medicineName",
                 body: "Dosage: $dosage",
-                anchorHour: _selectedTime!.hour,
-                anchorMinute: _selectedTime!.minute,
-                intervalHours: intervalHours,
+                hour: _selectedTime!.hour,
+                minute: _selectedTime!.minute,
                 weekdays: weekdaysInts,
               );
             }
-            // Also schedule a one-shot immediate exact for the next upcoming slot today
-            await NotificationService.scheduleOneShotExactNext(
-              tag: medicineName,
-              title: "Take your $medicineName",
-              body: "Dosage: $dosage",
-              hour: _selectedTime!.hour,
-              minute: _selectedTime!.minute,
-              weekdays: weekdaysInts,
-            );
           }
 
           // Log to history
@@ -284,15 +374,17 @@ class _AddMedicinePageState extends State<AddMedicinePage> {
             medicineName: medicineName,
           );
           
-          // Also use enhanced notification service for better Android 12-14 support
-          await EnhancedNotificationService.scheduleEnhancedReminder(
-            medicineName: medicineName,
-            dosage: dosage,
-            time: _selectedTime!,
-            days: daysToSave,
-            interval: _interval,
-            enableStockReduction: true, // Auto-reduce stock on scheduled time
-          );
+          // Only use enhanced notification service for non-minute intervals
+          if (_interval != "q2m") {
+            await EnhancedNotificationService.scheduleEnhancedReminder(
+              medicineName: medicineName,
+              dosage: dosage,
+              time: _selectedTime!,
+              days: daysToSave,
+              interval: _interval,
+              enableStockReduction: true, // Auto-reduce stock on scheduled time
+            );
+          }
         } catch (e) {
           print("Error scheduling notifications: $e");
         }
@@ -558,30 +650,79 @@ class _AddMedicinePageState extends State<AddMedicinePage> {
 
             /// Schedule Fields (shown only if enabled)
             if (_createSchedule) ...[
-              /// Time Picker
-              ListTile(
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(8),
-                  side: BorderSide(color: Colors.grey[400]!),
+              /// Interval Dropdown (moved up for better UX)
+              DropdownButtonFormField<String>(
+                value: _interval,
+                items: const [
+                  DropdownMenuItem(
+                      value: 'Daily', child: Text('Daily (once/day)')),
+                  DropdownMenuItem(value: 'q2m', child: Text('Every 2 minutes')),
+                  DropdownMenuItem(value: 'q2h', child: Text('Every 2 hours')),
+                  DropdownMenuItem(value: 'q4h', child: Text('Every 4 hours')),
+                  DropdownMenuItem(value: 'q6h', child: Text('Every 6 hours')),
+                  DropdownMenuItem(value: 'q12h', child: Text('Every 12 hours')),
+                ],
+                onChanged: (val) => setState(() => _interval = val ?? 'Daily'),
+                decoration: const InputDecoration(
+                  labelText: 'Interval',
+                  border: OutlineInputBorder(),
                 ),
-                title: Text(
-                  _selectedTime == null
-                      ? "Select Time"
-                      : "Time: ${_selectedTime?.format(context)}",
-                  style: const TextStyle(fontSize: 16),
-                ),
-                trailing: const Icon(Icons.access_time, color: Colors.blue),
-                onTap: () async {
-                  final picked = await showTimePicker(
-                    context: context,
-                    initialTime: TimeOfDay.now(),
-                  );
-                  if (picked != null) {
-                    setState(() => _selectedTime = picked);
-                  }
-                },
               ),
               const SizedBox(height: 16),
+              
+              /// Time Picker (hidden for 2-minute intervals)
+              if (_interval != 'q2m') ...[
+                ListTile(
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(8),
+                    side: BorderSide(color: Colors.grey[400]!),
+                  ),
+                  title: Text(
+                    _selectedTime == null
+                        ? "Select Time"
+                        : "Time: ${_selectedTime?.format(context)}",
+                    style: const TextStyle(fontSize: 16),
+                  ),
+                  trailing: const Icon(Icons.access_time, color: Colors.blue),
+                  onTap: () async {
+                    final picked = await showTimePicker(
+                      context: context,
+                      initialTime: TimeOfDay.now(),
+                    );
+                    if (picked != null) {
+                      setState(() => _selectedTime = picked);
+                    }
+                  },
+                ),
+                const SizedBox(height: 16),
+              ],
+              
+              /// Info for 2-minute intervals
+              if (_interval == 'q2m') ...[
+                Card(
+                  color: Colors.blue[50],
+                  child: Padding(
+                    padding: const EdgeInsets.all(12.0),
+                    child: Row(
+                      children: [
+                        Icon(Icons.info_outline, color: Colors.blue[700]),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: Text(
+                            "Notifications will start immediately and repeat every 2 minutes",
+                            style: TextStyle(
+                              fontSize: 13,
+                              color: Colors.blue[900],
+                              fontWeight: FontWeight.w500,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 16),
+              ],
 
               /// Days Dropdown
               DropdownButtonFormField<String>(
@@ -639,49 +780,31 @@ class _AddMedicinePageState extends State<AddMedicinePage> {
                   ],
                 ),
 
-              const SizedBox(height: 16),
-
-              /// Interval Dropdown
-              DropdownButtonFormField<String>(
-                value: _interval,
-                items: const [
-                  DropdownMenuItem(
-                      value: 'Daily', child: Text('Daily (once/day)')),
-                  DropdownMenuItem(value: 'q2h', child: Text('Every 2 hours')),
-                  DropdownMenuItem(value: 'q4h', child: Text('Every 4 hours')),
-                  DropdownMenuItem(value: 'q6h', child: Text('Every 6 hours')),
-                  DropdownMenuItem(value: 'q12h', child: Text('Every 12 hours')),
-                ],
-                onChanged: (val) => setState(() => _interval = val ?? 'Daily'),
-                decoration: const InputDecoration(
-                  labelText: 'Interval',
-                  border: OutlineInputBorder(),
-                ),
-              ),
-              const SizedBox(height: 16),
-
-              /// Info Card
-              Card(
-                color: Colors.blue[50],
-                child: Padding(
-                  padding: const EdgeInsets.all(12.0),
-                  child: Row(
-                    children: [
-                      Icon(Icons.info_outline, color: Colors.blue[700]),
-                      const SizedBox(width: 12),
-                      Expanded(
-                        child: Text(
-                          "Notifications will be scheduled based on your selected time and days",
-                          style: TextStyle(
-                            fontSize: 12,
-                            color: Colors.blue[900],
+              /// Info Card (only for non-2-minute intervals)
+              if (_interval != 'q2m') ...[
+                const SizedBox(height: 16),
+                Card(
+                  color: Colors.blue[50],
+                  child: Padding(
+                    padding: const EdgeInsets.all(12.0),
+                    child: Row(
+                      children: [
+                        Icon(Icons.info_outline, color: Colors.blue[700]),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: Text(
+                            "Notifications will be scheduled based on your selected time and days",
+                            style: TextStyle(
+                              fontSize: 12,
+                              color: Colors.blue[900],
+                            ),
                           ),
                         ),
-                      ),
-                    ],
+                      ],
+                    ),
                   ),
                 ),
-              ),
+              ],
             ],
 
             const SizedBox(height: 24),

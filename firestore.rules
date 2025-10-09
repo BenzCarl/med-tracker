@@ -50,7 +50,7 @@ service cloud.firestore {
           && request.resource.data.days is list
           && request.resource.data.days.size() >= 0
           && (!('interval' in request.resource.data)
-              || request.resource.data.interval in ['Daily','q2h','q4h','q6h','q12h']);
+              || request.resource.data.interval in ['Daily','q2m','q2h','q4h','q6h','q12h']);
         allow delete: if isOwner(userId);
       }
 
