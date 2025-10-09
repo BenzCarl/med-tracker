@@ -432,6 +432,73 @@ class EnhancedNotificationService {
     }
   }
   
+  /// Schedule notifications every minute for testing/development
+  static Future<void> scheduleEveryMinute({
+    required String medicineName,
+    required String dosage,
+  }) async {
+    try {
+      await init();
+      
+      const AndroidNotificationDetails androidDetails =
+          AndroidNotificationDetails(
+        'med_channel_urgent',
+        'Urgent Medicine Alerts',
+        channelDescription: 'Minute-by-minute medicine reminders',
+        importance: Importance.max,
+        priority: Priority.max,
+        playSound: true,
+        enableVibration: true,
+        enableLights: true,
+        color: Color.fromARGB(255, 33, 150, 243),
+        ledColor: Color.fromARGB(255, 33, 150, 243),
+        ledOnMs: 1000,
+        ledOffMs: 500,
+        ticker: 'Medicine Time',
+        fullScreenIntent: true,
+        category: AndroidNotificationCategory.alarm,
+        audioAttributesUsage: AudioAttributesUsage.alarm,
+      );
+      
+      const NotificationDetails details = NotificationDetails(
+        android: androidDetails,
+      );
+      
+      // Schedule 60 notifications for the next 60 minutes
+      for (int i = 1; i <= 60; i++) {
+        final now = tz.TZDateTime.now(tz.local);
+        final scheduledDate = now.add(Duration(minutes: i));
+        final id = (medicineName.hashCode.abs() % 800000) + 100000 + i;
+        
+        await _notifications.zonedSchedule(
+          id,
+          "💊 Take your $medicineName",
+          "Dosage: $dosage\nMinute $i notification",
+          scheduledDate,
+          details,
+          androidScheduleMode: AndroidScheduleMode.exactAllowWhileIdle,
+          payload: jsonEncode({
+            'medicineName': medicineName,
+            'dosage': dosage,
+            'type': 'every_minute',
+            'minute': i,
+          }),
+        );
+      }
+      
+      print('🕓 [ENHANCED EVERY MINUTE] Scheduled 60 notifications for $medicineName');
+      
+      // Show confirmation
+      await showInstantNotification(
+        title: "✅ Minute Reminders Set",
+        body: "You'll receive a notification every minute for $medicineName (next 60 minutes)",
+      );
+    } catch (e) {
+      print('❌ Error scheduling every-minute for $medicineName: $e');
+      rethrow;
+    }
+  }
+
   /// Show instant notification with high priority
   static Future<void> showInstantNotification({
     required String title,
