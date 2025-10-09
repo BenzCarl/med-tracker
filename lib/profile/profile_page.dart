@@ -308,155 +308,363 @@ class _ProfilePageState extends State<ProfilePage> {
 
   @override
   Widget build(BuildContext context) {
+    final user = FirebaseAuth.instance.currentUser;
+    
     return Scaffold(
-      appBar: AppBar(
-        title: const Text("Profile"),
-        leading: IconButton(
-          icon: const Icon(Icons.arrow_back),
-          onPressed: () => Navigator.pop(context),
+      body: Container(
+        decoration: BoxDecoration(
+          gradient: LinearGradient(
+            begin: Alignment.topCenter,
+            end: Alignment.bottomCenter,
+            colors: [
+              Colors.purple.shade50,
+              Colors.pink.shade50,
+              Colors.white,
+            ],
+          ),
         ),
-        actions: [
-          // Edit / Save button
-          IconButton(
-            icon: Icon(_isEditing ? Icons.check : Icons.edit),
-            onPressed: () {
-              setState(() {
-                if (_isEditing) {
-                  _saveProfile(); // ✅ save before turning off edit mode
-                }
-                _isEditing = !_isEditing;
-              });
-            },
-          ),
-          // ➕ Add illness button
-          IconButton(
-            icon: const Icon(Icons.add),
-            onPressed: () {
-              Navigator.push(
-                context,
-                MaterialPageRoute(builder: (_) => const AddIllnessPage()),
-              ).then((_) {
-                _loadUserData(); // ✅ refresh illnesses when coming back
-              });
-            },
-          ),
-        ],
-      ),
-
-      body: Padding(
-        padding: const EdgeInsets.all(16.0),
-        child: ListView(
-          children: [
-            TextField(
-              controller: _nameController,
-              readOnly: !_isEditing,
-              decoration: const InputDecoration(
-                labelText: "Name",
-                border: OutlineInputBorder(),
-              ),
-            ),
-            const SizedBox(height: 16),
-
-            TextField(
-              controller: _emailController,
-              readOnly: !_isEditing,
-              decoration: const InputDecoration(
-                labelText: "Email",
-                border: OutlineInputBorder(),
-              ),
-            ),
-            const SizedBox(height: 16),
-
-            TextField(
-              controller: _contactController,
-              readOnly: !_isEditing,
-              decoration: const InputDecoration(
-                labelText: "Contact",
-                border: OutlineInputBorder(),
-              ),
-            ),
-            const SizedBox(height: 16),
-
-            GestureDetector(
-              onTap: _pickDate,
-              child: AbsorbPointer(
-                child: TextField(
-                  controller: _dobController,
-                  readOnly: true,
-                  decoration: const InputDecoration(
-                    labelText: "Date of Birth",
-                    border: OutlineInputBorder(),
+        child: SafeArea(
+          child: Column(
+            children: [
+              // Custom App Bar with Profile Header
+              Container(
+                padding: const EdgeInsets.all(20),
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    colors: [
+                      Colors.purple.shade600,
+                      Colors.pink.shade600,
+                    ],
                   ),
+                  borderRadius: const BorderRadius.only(
+                    bottomLeft: Radius.circular(30),
+                    bottomRight: Radius.circular(30),
+                  ),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.purple.withOpacity(0.3),
+                      blurRadius: 15,
+                      offset: const Offset(0, 8),
+                    ),
+                  ],
+                ),
+                child: Column(
+                  children: [
+                    Row(
+                      children: [
+                        IconButton(
+                          icon: const Icon(Icons.arrow_back, color: Colors.white),
+                          onPressed: () => Navigator.pop(context),
+                        ),
+                        const Spacer(),
+                        // Edit / Save button
+                        Container(
+                          decoration: BoxDecoration(
+                            color: Colors.white.withOpacity(0.2),
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          child: IconButton(
+                            icon: Icon(
+                              _isEditing ? Icons.check_circle : Icons.edit,
+                              color: Colors.white,
+                            ),
+                            onPressed: () {
+                              setState(() {
+                                if (_isEditing) {
+                                  _saveProfile();
+                                }
+                                _isEditing = !_isEditing;
+                              });
+                            },
+                          ),
+                        ),
+                        const SizedBox(width: 8),
+                        // Add illness button
+                        Container(
+                          decoration: BoxDecoration(
+                            color: Colors.white.withOpacity(0.2),
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          child: IconButton(
+                            icon: const Icon(Icons.add_circle, color: Colors.white),
+                            onPressed: () {
+                              Navigator.push(
+                                context,
+                                MaterialPageRoute(builder: (_) => const AddIllnessPage()),
+                              ).then((_) {
+                                _loadUserData();
+                              });
+                            },
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 20),
+                    // Profile Avatar
+                    Container(
+                      padding: const EdgeInsets.all(4),
+                      decoration: BoxDecoration(
+                        color: Colors.white,
+                        shape: BoxShape.circle,
+                        boxShadow: [
+                          BoxShadow(
+                            color: Colors.black.withOpacity(0.2),
+                            blurRadius: 15,
+                            spreadRadius: 3,
+                          ),
+                        ],
+                      ),
+                      child: CircleAvatar(
+                        radius: 50,
+                        backgroundColor: Colors.purple.shade100,
+                        backgroundImage: user?.photoURL != null
+                            ? NetworkImage(user!.photoURL!)
+                            : null,
+                        child: user?.photoURL == null
+                            ? Icon(
+                                Icons.person,
+                                size: 50,
+                                color: Colors.purple.shade700,
+                              )
+                            : null,
+                      ),
+                    ),
+                    const SizedBox(height: 16),
+                    Text(
+                      _nameController.text.isEmpty ? "User Profile" : _nameController.text,
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontSize: 24,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      _emailController.text,
+                      style: TextStyle(
+                        color: Colors.white.withOpacity(0.9),
+                        fontSize: 14,
+                      ),
+                    ),
+                  ],
                 ),
               ),
-            ),
-            const SizedBox(height: 16),
+              
+              // Content
+              Expanded(
+                child: ListView(
+                  padding: const EdgeInsets.all(16),
+                  children: [
+                    _buildInfoCard(Icons.person, "Name", _nameController, editable: _isEditing),
+                    _buildInfoCard(Icons.email, "Email", _emailController, editable: _isEditing),
+                    _buildInfoCard(Icons.phone, "Contact", _contactController, editable: _isEditing),
+                    _buildDateCard(),
+                    _buildInfoCard(Icons.cake, "Age", _ageController),
+                    _buildInfoCard(Icons.local_hospital, "Illness", _illnessController),
 
-            TextField(
-              controller: _ageController,
-              readOnly: true,
-              decoration: const InputDecoration(
-                labelText: "Age",
-                border: OutlineInputBorder(),
-              ),
-            ),
-            const SizedBox(height: 16),
+                    const SizedBox(height: 20),
 
-            TextField(
-              controller: _illnessController,
-              readOnly: true, // ✅ Illness cannot be edited
-              decoration: const InputDecoration(
-                labelText: "Illness",
-                border: OutlineInputBorder(),
-              ),
-            ),
-
-            const SizedBox(height: 12),
-
-            // Illness management list
-            if (_illnesses.isNotEmpty)
-              Card(
-                child: Padding(
-                  padding: const EdgeInsets.all(12.0),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      const Text(
-                        "Manage Illnesses",
-                        style: TextStyle(fontWeight: FontWeight.bold),
-                      ),
-                      const SizedBox(height: 8),
-                      ..._illnesses.map((i) => ListTile(
-                            title: Text(i),
-                            trailing: Row(
-                              mainAxisSize: MainAxisSize.min,
+                    // Illness management list
+                    if (_illnesses.isNotEmpty)
+                      Container(
+                        decoration: BoxDecoration(
+                          gradient: LinearGradient(
+                            begin: Alignment.topLeft,
+                            end: Alignment.bottomRight,
+                            colors: [
+                              Colors.white,
+                              Colors.pink.shade50,
+                            ],
+                          ),
+                          borderRadius: BorderRadius.circular(20),
+                          boxShadow: [
+                            BoxShadow(
+                              color: Colors.purple.withOpacity(0.1),
+                              blurRadius: 10,
+                              offset: const Offset(0, 5),
+                            ),
+                          ],
+                        ),
+                        padding: const EdgeInsets.all(16),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Row(
                               children: [
-                                IconButton(
-                                  icon: const Icon(Icons.edit),
-                                  onPressed: () => _renameIllness(i),
-                                  tooltip: 'Rename',
-                                ),
-                                IconButton(
-                                  icon: const Icon(Icons.delete, color: Colors.red),
-                                  onPressed: () => _deleteIllness(i),
-                                  tooltip: 'Delete',
+                                Icon(Icons.health_and_safety, color: Colors.purple.shade600),
+                                const SizedBox(width: 8),
+                                Text(
+                                  "Manage Illnesses",
+                                  style: TextStyle(
+                                    fontWeight: FontWeight.bold,
+                                    fontSize: 18,
+                                    color: Colors.grey.shade800,
+                                  ),
                                 ),
                               ],
                             ),
-                          )),
-                    ],
-                  ),
+                            const SizedBox(height: 12),
+                            ..._illnesses.map((i) => Container(
+                                  margin: const EdgeInsets.only(bottom: 8),
+                                  decoration: BoxDecoration(
+                                    color: Colors.purple.shade50,
+                                    borderRadius: BorderRadius.circular(12),
+                                    border: Border.all(color: Colors.purple.shade200),
+                                  ),
+                                  child: ListTile(
+                                    leading: Icon(Icons.medical_services, color: Colors.purple.shade600),
+                                    title: Text(
+                                      i,
+                                      style: const TextStyle(fontWeight: FontWeight.w600),
+                                    ),
+                                    trailing: Row(
+                                      mainAxisSize: MainAxisSize.min,
+                                      children: [
+                                        IconButton(
+                                          icon: Icon(Icons.edit, color: Colors.blue.shade600),
+                                          onPressed: () => _renameIllness(i),
+                                          tooltip: 'Rename',
+                                        ),
+                                        IconButton(
+                                          icon: const Icon(Icons.delete, color: Colors.red),
+                                          onPressed: () => _deleteIllness(i),
+                                          tooltip: 'Delete',
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                )),
+                          ],
+                        ),
+                      ),
+
+                    const SizedBox(height: 24),
+                    
+                    // Change Password Button
+                    Center(
+                      child: Container(
+                        width: double.infinity,
+                        height: 55,
+                        decoration: BoxDecoration(
+                          gradient: LinearGradient(
+                            colors: [
+                              Colors.purple.shade600,
+                              Colors.pink.shade600,
+                            ],
+                          ),
+                          borderRadius: BorderRadius.circular(15),
+                          boxShadow: [
+                            BoxShadow(
+                              color: Colors.purple.withOpacity(0.4),
+                              blurRadius: 10,
+                              offset: const Offset(0, 5),
+                            ),
+                          ],
+                        ),
+                        child: ElevatedButton(
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: Colors.transparent,
+                            shadowColor: Colors.transparent,
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(15),
+                            ),
+                          ),
+                          onPressed: _showChangePasswordDialog,
+                          child: const Text(
+                            "Change Password",
+                            style: TextStyle(
+                              color: Colors.white,
+                              fontSize: 16,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                        ),
+                      ),
+                    ),
+                  ],
                 ),
               ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
 
-            const SizedBox(height: 20),
-            Center(
-              child: TextButton(
-                onPressed: _showChangePasswordDialog,
-                child: const Text("Change Password"),
+  Widget _buildInfoCard(IconData icon, String label, TextEditingController controller, {bool editable = false}) {
+    return Container(
+      margin: const EdgeInsets.only(bottom: 16),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(15),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.05),
+            blurRadius: 8,
+            offset: const Offset(0, 2),
+          ),
+        ],
+      ),
+      child: TextField(
+        controller: controller,
+        readOnly: !editable,
+        decoration: InputDecoration(
+          labelText: label,
+          prefixIcon: Icon(icon, color: Colors.purple.shade600),
+          filled: true,
+          fillColor: Colors.white,
+          border: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(15),
+            borderSide: BorderSide(color: Colors.purple.shade200),
+          ),
+          enabledBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(15),
+            borderSide: BorderSide(color: Colors.purple.shade200),
+          ),
+          focusedBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(15),
+            borderSide: BorderSide(color: Colors.purple.shade600, width: 2),
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildDateCard() {
+    return Container(
+      margin: const EdgeInsets.only(bottom: 16),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(15),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.05),
+            blurRadius: 8,
+            offset: const Offset(0, 2),
+          ),
+        ],
+      ),
+      child: GestureDetector(
+        onTap: _pickDate,
+        child: AbsorbPointer(
+          child: TextField(
+            controller: _dobController,
+            readOnly: true,
+            decoration: InputDecoration(
+              labelText: "Date of Birth",
+              prefixIcon: Icon(Icons.calendar_today, color: Colors.purple.shade600),
+              filled: true,
+              fillColor: Colors.white,
+              border: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(15),
+                borderSide: BorderSide(color: Colors.purple.shade200),
+              ),
+              enabledBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(15),
+                borderSide: BorderSide(color: Colors.purple.shade200),
               ),
             ),
-          ],
+          ),
         ),
       ),
     );

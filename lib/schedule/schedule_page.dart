@@ -24,6 +24,7 @@ class SchedulePage extends StatelessWidget {
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
+      backgroundColor: Colors.transparent,
       builder: (ctx) {
         return StatefulBuilder(
           builder: (context, setState) {
@@ -299,58 +300,150 @@ class SchedulePage extends StatelessWidget {
               }
             }
 
-            return Padding(
-              padding: EdgeInsets.only(
-                left: 16,
-                right: 16,
-                top: 16,
-                bottom: MediaQuery.of(ctx).viewInsets.bottom + 16,
+            return Container(
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                  colors: [
+                    Colors.white,
+                    Colors.blue.shade50,
+                  ],
+                ),
+                borderRadius: const BorderRadius.only(
+                  topLeft: Radius.circular(25),
+                  topRight: Radius.circular(25),
+                ),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.blue.withOpacity(0.2),
+                    blurRadius: 20,
+                    offset: const Offset(0, -5),
+                  ),
+                ],
               ),
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Text(
-                    "Schedule for $medicineName ($dosage)",
-                    style: const TextStyle(
-                      fontWeight: FontWeight.bold,
-                      fontSize: 18,
+              child: Padding(
+                padding: EdgeInsets.only(
+                  left: 24,
+                  right: 24,
+                  top: 24,
+                  bottom: MediaQuery.of(ctx).viewInsets.bottom + 24,
+                ),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    // Handle bar
+                    Container(
+                      width: 40,
+                      height: 4,
+                      decoration: BoxDecoration(
+                        color: Colors.grey.shade300,
+                        borderRadius: BorderRadius.circular(2),
+                      ),
                     ),
-                  ),
-                  const SizedBox(height: 16),
-
-                  // time picker
-                  ListTile(
-                    title: Text(
-                      selectedTime == null
-                          ? "Select Time"
-                          : "Time: ${selectedTime?.format(context)}",
+                    const SizedBox(height: 20),
+                    // Title
+                    Row(
+                      children: [
+                        Container(
+                          padding: const EdgeInsets.all(12),
+                          decoration: BoxDecoration(
+                            gradient: LinearGradient(
+                              colors: [
+                                Colors.blue.shade400,
+                                Colors.purple.shade400,
+                              ],
+                            ),
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          child: const Icon(
+                            Icons.schedule_rounded,
+                            color: Colors.white,
+                            size: 24,
+                          ),
+                        ),
+                        const SizedBox(width: 16),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                "Schedule Reminder",
+                                style: TextStyle(
+                                  fontWeight: FontWeight.bold,
+                                  fontSize: 20,
+                                  color: Colors.grey.shade800,
+                                ),
+                              ),
+                              const SizedBox(height: 4),
+                              Text(
+                                "$medicineName ($dosage)",
+                                style: TextStyle(
+                                  fontSize: 14,
+                                  color: Colors.grey.shade600,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
                     ),
-                    trailing: const Icon(Icons.access_time),
-                    onTap: () async {
-                      final picked = await showTimePicker(
-                        context: context,
-                        initialTime: TimeOfDay.now(),
-                      );
-                      if (picked != null) setState(() => selectedTime = picked);
-                    },
-                  ),
+                    const SizedBox(height: 24),
 
-                  const SizedBox(height: 8),
-
-                  // day selector
-                  DropdownButtonFormField<String>(
-                    value: selectedDays,
-                    items: dayOptions
-                        .map((d) => DropdownMenuItem(value: d, child: Text(d)))
-                        .toList(),
-                    onChanged: (val) {
-                      setState(() => selectedDays = val ?? "Weekdays");
-                    },
-                    decoration: const InputDecoration(
-                      labelText: "Days",
-                      border: OutlineInputBorder(),
+                    // Time picker
+                    Container(
+                      decoration: BoxDecoration(
+                        color: Colors.white,
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(color: Colors.grey.shade300),
+                      ),
+                      child: ListTile(
+                        leading: Icon(Icons.access_time, color: Colors.blue.shade600),
+                        title: Text(
+                          selectedTime == null
+                              ? "Select Time"
+                              : "Time: ${selectedTime?.format(context)}",
+                          style: TextStyle(
+                            fontWeight: selectedTime != null ? FontWeight.bold : FontWeight.normal,
+                            color: selectedTime != null ? Colors.blue.shade700 : Colors.grey.shade600,
+                          ),
+                        ),
+                        trailing: Icon(Icons.chevron_right, color: Colors.grey.shade400),
+                        onTap: () async {
+                          final picked = await showTimePicker(
+                            context: context,
+                            initialTime: TimeOfDay.now(),
+                          );
+                          if (picked != null) setState(() => selectedTime = picked);
+                        },
+                      ),
                     ),
-                  ),
+
+                    const SizedBox(height: 16),
+
+                    // Day selector
+                    Container(
+                      decoration: BoxDecoration(
+                        color: Colors.white,
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(color: Colors.grey.shade300),
+                      ),
+                      child: DropdownButtonFormField<String>(
+                        value: selectedDays,
+                        items: dayOptions
+                            .map((d) => DropdownMenuItem(value: d, child: Text(d)))
+                            .toList(),
+                        onChanged: (val) {
+                          setState(() => selectedDays = val ?? "Weekdays");
+                        },
+                        decoration: InputDecoration(
+                          labelText: "Days",
+                          prefixIcon: Icon(Icons.calendar_today, color: Colors.blue.shade600),
+                          border: InputBorder.none,
+                          contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+                        ),
+                      ),
+                    ),
 
                   if (selectedDays == "Custom")
                     Column(
@@ -394,53 +487,106 @@ class SchedulePage extends StatelessWidget {
 
                   const SizedBox(height: 16),
 
-                  // interval selector (overrides medicine frequency)
-                  DropdownButtonFormField<String>(
-                    value: interval,
-                    items: const [
-                      DropdownMenuItem(value: 'Daily', child: Text('Daily (once/day)')),
-                      DropdownMenuItem(value: 'q1m', child: Text('Every Minute (Testing)')),
-                      DropdownMenuItem(value: 'q2h', child: Text('Every 2 hours')),
-                      DropdownMenuItem(value: 'q4h', child: Text('Every 4 hours')),
-                      DropdownMenuItem(value: 'q6h', child: Text('Every 6 hours')),
-                      DropdownMenuItem(value: 'q12h', child: Text('Every 12 hours')),
-                    ],
-                    onChanged: (val) => setState(() => interval = val ?? 'Daily'),
-                    decoration: const InputDecoration(
-                      labelText: 'Interval',
-                      border: OutlineInputBorder(),
-                    ),
-                  ),
-
-                  const SizedBox(height: 24),
-
-                  Row(
-                    children: [
-                      Expanded(
-                        child: ElevatedButton(
-                          onPressed: selectedTime == null
-                              ? null
-                              : _saveSchedule,
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: Colors.blue,
-                            foregroundColor: Colors.white,
-                            padding: const EdgeInsets.symmetric(vertical: 12),
-                          ),
-                          child: const Text("Save Schedule"),
+                    // Interval selector
+                    Container(
+                      decoration: BoxDecoration(
+                        color: Colors.white,
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(color: Colors.grey.shade300),
+                      ),
+                      child: DropdownButtonFormField<String>(
+                        value: interval,
+                        items: const [
+                          DropdownMenuItem(value: 'Daily', child: Text('Daily (once/day)')),
+                          DropdownMenuItem(value: 'q1m', child: Text('Every Minute (Testing)')),
+                          DropdownMenuItem(value: 'q2h', child: Text('Every 2 hours')),
+                          DropdownMenuItem(value: 'q4h', child: Text('Every 4 hours')),
+                          DropdownMenuItem(value: 'q6h', child: Text('Every 6 hours')),
+                          DropdownMenuItem(value: 'q12h', child: Text('Every 12 hours')),
+                        ],
+                        onChanged: (val) => setState(() => interval = val ?? 'Daily'),
+                        decoration: InputDecoration(
+                          labelText: 'Interval',
+                          prefixIcon: Icon(Icons.repeat, color: Colors.blue.shade600),
+                          border: InputBorder.none,
+                          contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
                         ),
                       ),
-                    ],
-                  ),
+                    ),
 
-                  const SizedBox(height: 8),
+                    const SizedBox(height: 32),
 
-                  OutlinedButton(
-                    onPressed: () {
-                      Navigator.pop(context);
-                    },
-                    child: const Text("Cancel"),
-                  ),
-                ],
+                    // Save Button
+                    Container(
+                      width: double.infinity,
+                      height: 52,
+                      decoration: BoxDecoration(
+                        gradient: selectedTime != null
+                            ? LinearGradient(
+                                colors: [
+                                  Colors.blue.shade600,
+                                  Colors.purple.shade600,
+                                ],
+                              )
+                            : null,
+                        color: selectedTime == null ? Colors.grey.shade300 : null,
+                        borderRadius: BorderRadius.circular(16),
+                        boxShadow: selectedTime != null
+                            ? [
+                                BoxShadow(
+                                  color: Colors.blue.withOpacity(0.3),
+                                  blurRadius: 10,
+                                  offset: const Offset(0, 5),
+                                ),
+                              ]
+                            : null,
+                      ),
+                      child: Material(
+                        color: Colors.transparent,
+                        child: InkWell(
+                          borderRadius: BorderRadius.circular(16),
+                          onTap: selectedTime == null ? null : _saveSchedule,
+                          child: const Center(
+                            child: Text(
+                              "Save Schedule",
+                              style: TextStyle(
+                                color: Colors.white,
+                                fontSize: 16,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                          ),
+                        ),
+                      ),
+                    ),
+
+                    const SizedBox(height: 12),
+
+                    // Cancel Button
+                    SizedBox(
+                      width: double.infinity,
+                      child: OutlinedButton(
+                        onPressed: () {
+                          Navigator.pop(context);
+                        },
+                        style: OutlinedButton.styleFrom(
+                          side: BorderSide(color: Colors.grey.shade400),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(16),
+                          ),
+                          padding: const EdgeInsets.symmetric(vertical: 16),
+                        ),
+                        child: Text(
+                          "Cancel",
+                          style: TextStyle(
+                            color: Colors.grey.shade700,
+                            fontSize: 16,
+                          ),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
               ),
             );
           },
@@ -457,141 +603,256 @@ class SchedulePage extends StatelessWidget {
     }
 
     return Scaffold(
-      appBar: AppBar(
-        title: const Text("Schedule Reminders"),
-        leading: IconButton(
-          icon: const Icon(Icons.arrow_back),
-          onPressed: () {
-            Navigator.pushAndRemoveUntil(
-              context,
-              MaterialPageRoute(builder: (context) => const DashboardPage()),
-              (route) => false,
-            );
-          },
-        ),
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.notifications),
-            onPressed: () async {
-              await NotificationService.scheduleTestNotification();
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(
-                  content: Text(
-                    "Test notification scheduled for 10 seconds from now",
-                  ),
-                ),
-              );
-            },
-            tooltip: "Test Notifications",
+      body: Container(
+        decoration: BoxDecoration(
+          gradient: LinearGradient(
+            begin: Alignment.topCenter,
+            end: Alignment.bottomCenter,
+            colors: [
+              Colors.blue.shade50,
+              Colors.purple.shade50,
+              Colors.white,
+            ],
           ),
-        ],
-      ),
-      body: WillPopScope(
-        onWillPop: () async {
-          Navigator.pushAndRemoveUntil(
-            context,
-            MaterialPageRoute(builder: (context) => const DashboardPage()),
-            (route) => false,
-          );
-          return false;
-        },
-        child: Padding(
-          padding: const EdgeInsets.all(16.0),
+        ),
+        child: SafeArea(
           child: Column(
             children: [
-              // Test Notifications Button
-              Card(
-                child: Padding(
-                  padding: const EdgeInsets.all(16.0),
-                  child: Column(
-                    children: [
-                      const Text(
-                        "Test Notifications",
+              // Custom App Bar
+              Container(
+                padding: const EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    colors: [
+                      Colors.blue.shade600,
+                      Colors.purple.shade600,
+                    ],
+                  ),
+                  borderRadius: const BorderRadius.only(
+                    bottomLeft: Radius.circular(25),
+                    bottomRight: Radius.circular(25),
+                  ),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.blue.withOpacity(0.3),
+                      blurRadius: 10,
+                      offset: const Offset(0, 5),
+                    ),
+                  ],
+                ),
+                child: Row(
+                  children: [
+                    IconButton(
+                      icon: const Icon(Icons.arrow_back, color: Colors.white),
+                      onPressed: () {
+                        Navigator.pushAndRemoveUntil(
+                          context,
+                          MaterialPageRoute(builder: (context) => const DashboardPage()),
+                          (route) => false,
+                        );
+                      },
+                    ),
+                    const SizedBox(width: 8),
+                    const Icon(Icons.schedule_rounded, color: Colors.white, size: 28),
+                    const SizedBox(width: 12),
+                    const Expanded(
+                      child: Text(
+                        "Schedule Reminders",
                         style: TextStyle(
+                          color: Colors.white,
+                          fontSize: 22,
                           fontWeight: FontWeight.bold,
-                          fontSize: 16,
                         ),
                       ),
-                      const SizedBox(height: 8),
-                      const Text(
-                        "Make sure notifications are working before setting up reminders",
-                        textAlign: TextAlign.center,
-                        style: TextStyle(fontSize: 12, color: Colors.grey),
+                    ),
+                    // Test notification button
+                    Container(
+                      decoration: BoxDecoration(
+                        color: Colors.white.withOpacity(0.2),
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(
+                          color: Colors.white.withOpacity(0.5),
+                          width: 2,
+                        ),
                       ),
-                      const SizedBox(height: 12),
-                      Row(
-                        children: [
-                          Expanded(
-                            child: ElevatedButton(
-                              onPressed: () async {
-                                await NotificationService.showInstantNotification(
-                                  title: "Test Instant Notification",
-                                  body:
-                                      "This is an instant test notification from Care Minder",
-                                );
-                                ScaffoldMessenger.of(context).showSnackBar(
-                                  const SnackBar(
-                                    content: Text("Instant notification sent!"),
-                                  ),
-                                );
-                              },
-                              style: ElevatedButton.styleFrom(
-                                backgroundColor: Colors.green,
-                                foregroundColor: Colors.white,
-                              ),
-                              child: const Text("Instant Test"),
-                            ),
-                          ),
-                          const SizedBox(width: 8),
-                          Expanded(
-                            child: ElevatedButton(
-                              onPressed: () async {
-                                await NotificationService.scheduleTestNotification();
-                                ScaffoldMessenger.of(context).showSnackBar(
-                                  const SnackBar(
-                                    content: Text(
-                                      "Scheduled test notification for 10 seconds from now",
-                                    ),
-                                  ),
-                                );
-                              },
-                              style: ElevatedButton.styleFrom(
-                                backgroundColor: Colors.blue,
-                                foregroundColor: Colors.white,
-                              ),
-                              child: const Text("Scheduled Test"),
-                            ),
-                          ),
-                        ],
-                      ),
-                      const SizedBox(height: 8),
-                      OutlinedButton(
+                      child: IconButton(
+                        icon: const Icon(Icons.notifications_active, color: Colors.white),
                         onPressed: () async {
-                          await NotificationService.debugPendingNotifications();
+                          await NotificationService.scheduleTestNotification();
                           ScaffoldMessenger.of(context).showSnackBar(
-                            const SnackBar(
-                              content: Text(
-                                "Check console for pending notifications",
+                            SnackBar(
+                              content: const Text(
+                                "Test notification scheduled for 10 seconds from now",
+                              ),
+                              backgroundColor: Colors.green.shade600,
+                              behavior: SnackBarBehavior.floating,
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(10),
                               ),
                             ),
                           );
                         },
-                        child: const Text("Debug Notifications"),
+                        tooltip: "Test Notifications",
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 16),
+              // Test Notifications Section
+              Container(
+                margin: const EdgeInsets.symmetric(horizontal: 16),
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                    colors: [
+                      Colors.white,
+                      Colors.blue.shade50,
+                    ],
+                  ),
+                  borderRadius: BorderRadius.circular(20),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.blue.withOpacity(0.1),
+                      blurRadius: 10,
+                      offset: const Offset(0, 5),
+                    ),
+                  ],
+                ),
+                child: Padding(
+                  padding: const EdgeInsets.all(20),
+                  child: Column(
+                    children: [
+                      Row(
+                        children: [
+                          Container(
+                            padding: const EdgeInsets.all(12),
+                            decoration: BoxDecoration(
+                              gradient: LinearGradient(
+                                colors: [
+                                  Colors.green.shade400,
+                                  Colors.teal.shade400,
+                                ],
+                              ),
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                            child: const Icon(
+                              Icons.science_rounded,
+                              color: Colors.white,
+                              size: 24,
+                            ),
+                          ),
+                          const SizedBox(width: 16),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  "Test Notifications",
+                                  style: TextStyle(
+                                    fontWeight: FontWeight.bold,
+                                    fontSize: 18,
+                                    color: Colors.grey.shade800,
+                                  ),
+                                ),
+                                const SizedBox(height: 4),
+                                Text(
+                                  "Make sure notifications work before scheduling",
+                                  style: TextStyle(
+                                    fontSize: 13,
+                                    color: Colors.grey.shade600,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 16),
+                      Row(
+                        children: [
+                          Expanded(
+                            child: _buildTestButton(
+                              context,
+                              "Instant",
+                              Icons.flash_on_rounded,
+                              Colors.green.shade600,
+                              () async {
+                                await NotificationService.showInstantNotification(
+                                  title: "Test Instant Notification",
+                                  body: "This is an instant test notification from Care Minder",
+                                );
+                                _showSuccessSnackBar(context, "Instant notification sent!");
+                              },
+                            ),
+                          ),
+                          const SizedBox(width: 12),
+                          Expanded(
+                            child: _buildTestButton(
+                              context,
+                              "Scheduled",
+                              Icons.schedule_rounded,
+                              Colors.blue.shade600,
+                              () async {
+                                await NotificationService.scheduleTestNotification();
+                                _showSuccessSnackBar(context, "Test scheduled for 10 seconds!");
+                              },
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 12),
+                      SizedBox(
+                        width: double.infinity,
+                        child: OutlinedButton.icon(
+                          onPressed: () async {
+                            await NotificationService.debugPendingNotifications();
+                            _showSuccessSnackBar(context, "Check console for debug info");
+                          },
+                          icon: Icon(Icons.bug_report_rounded, color: Colors.purple.shade600),
+                          label: Text(
+                            "Debug Notifications",
+                            style: TextStyle(color: Colors.purple.shade600),
+                          ),
+                          style: OutlinedButton.styleFrom(
+                            side: BorderSide(color: Colors.purple.shade600),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                            padding: const EdgeInsets.symmetric(vertical: 12),
+                          ),
+                        ),
                       ),
                     ],
                   ),
                 ),
               ),
 
-              const SizedBox(height: 16),
+              const SizedBox(height: 24),
 
-              const Text(
-                "Your Medicines - Tap to Schedule",
-                style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+              // Section Title
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 16),
+                child: Row(
+                  children: [
+                    Icon(Icons.medication_rounded, color: Colors.blue.shade700),
+                    const SizedBox(width: 8),
+                    Text(
+                      "Your Medicines - Tap to Schedule",
+                      style: TextStyle(
+                        fontWeight: FontWeight.bold,
+                        fontSize: 18,
+                        color: Colors.grey.shade800,
+                      ),
+                    ),
+                  ],
+                ),
               ),
 
               const SizedBox(height: 16),
 
+              // Medicines List
               Expanded(
                 child: StreamBuilder<QuerySnapshot>(
                   stream: FirebaseFirestore.instance
@@ -602,54 +863,74 @@ class SchedulePage extends StatelessWidget {
                       .snapshots(),
                   builder: (context, snapshot) {
                     if (snapshot.connectionState == ConnectionState.waiting) {
-                      return const Center(child: CircularProgressIndicator());
+                      return const Center(
+                        child: CircularProgressIndicator(
+                          color: Colors.blue,
+                        ),
+                      );
                     }
                     if (snapshot.hasError) {
                       return Center(
                         child: Column(
                           mainAxisAlignment: MainAxisAlignment.center,
                           children: [
-                            const Icon(
-                              Icons.error,
-                              color: Colors.red,
-                              size: 48,
-                            ),
+                            Icon(Icons.error_outline, size: 64, color: Colors.red.shade300),
                             const SizedBox(height: 16),
                             const Text("Error loading medicines"),
                             const SizedBox(height: 16),
-                            ElevatedButton(
+                            ElevatedButton.icon(
                               onPressed: () {
-                                // Retry loading
+                                // Trigger rebuild
+                                (context as Element).markNeedsBuild();
                               },
-                              child: const Text("Retry"),
+                              icon: const Icon(Icons.refresh),
+                              label: const Text("Retry"),
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: Colors.blue.shade600,
+                                foregroundColor: Colors.white,
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(12),
+                                ),
+                              ),
                             ),
                           ],
                         ),
                       );
                     }
                     if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
-                      return const Center(
+                      return Center(
                         child: Column(
                           mainAxisAlignment: MainAxisAlignment.center,
                           children: [
-                            Icon(
-                              Icons.medication,
-                              size: 64,
-                              color: Colors.grey,
-                            ),
-                            SizedBox(height: 16),
-                            Text(
-                              "No medicines found",
-                              style: TextStyle(
-                                fontSize: 16,
-                                color: Colors.grey,
+                            Container(
+                              padding: const EdgeInsets.all(32),
+                              decoration: BoxDecoration(
+                                color: Colors.blue.shade50,
+                                shape: BoxShape.circle,
+                              ),
+                              child: Icon(
+                                Icons.medication_rounded,
+                                size: 80,
+                                color: Colors.blue.shade300,
                               ),
                             ),
-                            SizedBox(height: 8),
+                            const SizedBox(height: 24),
+                            Text(
+                              "No Medicines Yet",
+                              style: TextStyle(
+                                fontSize: 22,
+                                fontWeight: FontWeight.bold,
+                                color: Colors.grey.shade700,
+                              ),
+                            ),
+                            const SizedBox(height: 8),
                             Text(
                               "Add medicines first to schedule reminders",
                               textAlign: TextAlign.center,
-                              style: TextStyle(color: Colors.grey),
+                              style: TextStyle(
+                                fontSize: 14,
+                                color: Colors.grey.shade500,
+                              ),
                             ),
                           ],
                         ),
@@ -658,31 +939,124 @@ class SchedulePage extends StatelessWidget {
 
                     final docs = snapshot.data!.docs;
                     return ListView.builder(
+                      padding: const EdgeInsets.symmetric(horizontal: 16),
                       itemCount: docs.length,
                       itemBuilder: (context, index) {
                         final med = docs[index].data() as Map<String, dynamic>;
-                        return Card(
-                          margin: const EdgeInsets.symmetric(vertical: 8),
-                          elevation: 2,
-                          child: ListTile(
-                            leading: const Icon(
-                              Icons.medication,
-                              color: Colors.blue,
+                        return Container(
+                          margin: const EdgeInsets.only(bottom: 12),
+                          decoration: BoxDecoration(
+                            gradient: LinearGradient(
+                              begin: Alignment.topLeft,
+                              end: Alignment.bottomRight,
+                              colors: [
+                                Colors.white,
+                                Colors.blue.shade50,
+                              ],
                             ),
-                            title: Text(
-                              med["name"] ?? "Unknown Medicine",
-                              style: const TextStyle(
-                                fontWeight: FontWeight.bold,
+                            borderRadius: BorderRadius.circular(16),
+                            boxShadow: [
+                              BoxShadow(
+                                color: Colors.blue.withOpacity(0.1),
+                                blurRadius: 8,
+                                offset: const Offset(0, 3),
                               ),
-                            ),
-                            subtitle: Text(
-                              "Dosage: ${med["dosage"] ?? "Not specified"}",
-                            ),
-                            // trailing icon removed per request
-                            onTap: () => _showScheduleDialog(
-                              context,
-                              med["name"] ?? "",
-                              med["dosage"] ?? "",
+                            ],
+                          ),
+                          child: Material(
+                            color: Colors.transparent,
+                            child: InkWell(
+                              borderRadius: BorderRadius.circular(16),
+                              onTap: () => _showScheduleDialog(
+                                context,
+                                med["name"] ?? "",
+                                med["dosage"] ?? "",
+                              ),
+                              child: Padding(
+                                padding: const EdgeInsets.all(16),
+                                child: Row(
+                                  children: [
+                                    // Medicine Icon
+                                    Container(
+                                      padding: const EdgeInsets.all(12),
+                                      decoration: BoxDecoration(
+                                        gradient: LinearGradient(
+                                          colors: [
+                                            Colors.blue.shade400,
+                                            Colors.purple.shade400,
+                                          ],
+                                        ),
+                                        borderRadius: BorderRadius.circular(12),
+                                      ),
+                                      child: const Icon(
+                                        Icons.medication_rounded,
+                                        color: Colors.white,
+                                        size: 24,
+                                      ),
+                                    ),
+                                    const SizedBox(width: 16),
+                                    // Medicine Info
+                                    Expanded(
+                                      child: Column(
+                                        crossAxisAlignment: CrossAxisAlignment.start,
+                                        children: [
+                                          Text(
+                                            med["name"] ?? "Unknown Medicine",
+                                            style: TextStyle(
+                                              fontWeight: FontWeight.bold,
+                                              fontSize: 16,
+                                              color: Colors.grey.shade800,
+                                            ),
+                                          ),
+                                          const SizedBox(height: 4),
+                                          Row(
+                                            children: [
+                                              Icon(
+                                                Icons.medical_information_rounded,
+                                                size: 14,
+                                                color: Colors.grey.shade600,
+                                              ),
+                                              const SizedBox(width: 4),
+                                              Text(
+                                                "Dosage: ${med["dosage"] ?? "Not specified"}",
+                                                style: TextStyle(
+                                                  fontSize: 13,
+                                                  color: Colors.grey.shade600,
+                                                ),
+                                              ),
+                                            ],
+                                          ),
+                                          const SizedBox(height: 8),
+                                          Container(
+                                            padding: const EdgeInsets.symmetric(
+                                              horizontal: 8,
+                                              vertical: 4,
+                                            ),
+                                            decoration: BoxDecoration(
+                                              color: Colors.blue.shade100,
+                                              borderRadius: BorderRadius.circular(8),
+                                            ),
+                                            child: Text(
+                                              "Tap to Schedule",
+                                              style: TextStyle(
+                                                fontSize: 10,
+                                                fontWeight: FontWeight.bold,
+                                                color: Colors.blue.shade700,
+                                              ),
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                    ),
+                                    // Arrow Icon
+                                    Icon(
+                                      Icons.chevron_right_rounded,
+                                      color: Colors.grey.shade400,
+                                      size: 28,
+                                    ),
+                                  ],
+                                ),
+                              ),
                             ),
                           ),
                         );
@@ -694,6 +1068,70 @@ class SchedulePage extends StatelessWidget {
             ],
           ),
         ),
+      ),
+    );
+  }
+
+  Widget _buildTestButton(
+    BuildContext context,
+    String label,
+    IconData icon,
+    Color color,
+    VoidCallback onPressed,
+  ) {
+    return Container(
+      height: 48,
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          colors: [
+            color,
+            color.withOpacity(0.8),
+          ],
+        ),
+        borderRadius: BorderRadius.circular(12),
+        boxShadow: [
+          BoxShadow(
+            color: color.withOpacity(0.3),
+            blurRadius: 8,
+            offset: const Offset(0, 3),
+          ),
+        ],
+      ),
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          borderRadius: BorderRadius.circular(12),
+          onTap: onPressed,
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Icon(icon, color: Colors.white, size: 20),
+              const SizedBox(width: 8),
+              Text(
+                label,
+                style: const TextStyle(
+                  color: Colors.white,
+                  fontWeight: FontWeight.bold,
+                  fontSize: 14,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  void _showSuccessSnackBar(BuildContext context, String message) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(message),
+        backgroundColor: Colors.green.shade600,
+        behavior: SnackBarBehavior.floating,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(10),
+        ),
+        duration: const Duration(seconds: 2),
       ),
     );
   }

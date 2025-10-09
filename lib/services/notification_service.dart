@@ -1,4 +1,5 @@
 // lib/services/notification_service.dart
+import 'package:flutter/material.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:android_intent_plus/android_intent.dart';
 import 'package:timezone/data/latest_all.dart' as tzdata;
@@ -7,6 +8,8 @@ import 'package:timezone/timezone.dart' as tz;
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'dart:convert';
+import '../main.dart';
+import '../medicines/take_medicine_dialog.dart';
 
 class NotificationService {
   static final FlutterLocalNotificationsPlugin _notifications =
@@ -113,6 +116,7 @@ class NotificationService {
           payload: jsonEncode({
             'tag': tag,
             'medicineName': tag,
+            'dosage': body.replaceFirst('Dosage: ', ''),
             'status': 'Reminder',
             'type': 'weekly_exact',
           }),
@@ -192,14 +196,19 @@ class NotificationService {
           payload: jsonEncode({
             'tag': tag,
             'medicineName': tag,
+            'dosage': body.replaceFirst('Dosage: ', ''),
             'status': 'Reminder',
             'type': 'weekly',
           }),
         );
 
+        print('📅 Scheduled notification for $tag on weekday $weekday at ${hour.toString().padLeft(2, '0')}:${minute.toString().padLeft(2, '0')} (ID: $id)');
         scheduledCount++;
-        print(
-          '📅 Scheduled notification for $tag on weekday $weekday at $hour:$minute',
+        
+        // Log notification creation to history
+        await logNotificationCreated(
+          medicineName: title,
+          notificationType: 'scheduled',
         );
       }
 
@@ -397,6 +406,7 @@ class NotificationService {
             payload: jsonEncode({
               'tag': tag,
               'medicineName': tag,
+              'dosage': body.replaceFirst('Dosage: ', ''),
               'status': 'Reminder',
               'type': 'interval_minutes_exact',
               'intervalMinutes': intervalMinutes,
@@ -468,6 +478,7 @@ class NotificationService {
             payload: jsonEncode({
               'tag': tag,
               'medicineName': tag,
+              'dosage': body.replaceFirst('Dosage: ', ''),
               'status': 'Reminder',
               'type': 'interval_minutes',
               'intervalMinutes': intervalMinutes,
@@ -563,6 +574,7 @@ class NotificationService {
       await _logNotificationHistory(
         status: 'Test',
         medicineName: 'Test Reminder - Care Minder',
+        notificationType: 'test',
       );
 
       print('🧪 Test notification scheduled for 10 seconds from now');
@@ -610,6 +622,7 @@ class NotificationService {
       await _logNotificationHistory(
         status: 'Test',
         medicineName: title,
+        notificationType: 'instant',
       );
       print('🔔 Instant notification shown: $title');
     } catch (e) {
@@ -687,6 +700,58 @@ class NotificationService {
   static Future<List<PendingNotificationRequest>>
   getPendingNotifications() async {
     return await _notifications.pendingNotificationRequests();
+  }
+
+  /// Get active notifications (currently showing in notification tray)
+  static Future<List<ActiveNotification>> getActiveNotifications() async {
+    try {
+      final androidImplementation = _notifications
+          .resolvePlatformSpecificImplementation<
+            AndroidFlutterLocalNotificationsPlugin>();
+      
+      if (androidImplementation != null) {
+        final activeNotifications = await androidImplementation.getActiveNotifications();
+        return activeNotifications ?? [];
+      }
+      return [];
+    } catch (e) {
+      print('Error getting active notifications: $e');
+      return [];
+    }
+  }
+
+  /// Get count of active notifications
+  static Future<int> getActiveNotificationCount() async {
+    final active = await getActiveNotifications();
+    return active.length;
+  }
+
+  /// Get live notification count with real-time updates
+  static Stream<int> getLiveNotificationCount() async* {
+    while (true) {
+      try {
+        final count = await getActiveNotificationCount();
+        yield count;
+        await Future.delayed(const Duration(seconds: 1)); // Update every second
+      } catch (e) {
+        yield 0;
+        await Future.delayed(const Duration(seconds: 2)); // Retry after error
+      }
+    }
+  }
+
+  /// Store notification when it's created (for history tracking)
+  static Future<void> logNotificationCreated({
+    required String medicineName,
+    String? dosage,
+    String? notificationType,
+  }) async {
+    await _logNotificationHistory(
+      status: 'Created',
+      medicineName: medicineName,
+      dosage: dosage,
+      notificationType: notificationType,
+    );
   }
 
   /// Schedule a daily notification at specific time
@@ -955,12 +1020,32 @@ class NotificationService {
       print('❌ Error showing simple notification: $e');
     }
   }
+
+  /// Check if app was launched from notification
+  static Future<void> checkAndHandleLaunchDetails() async {
+    try {
+      final details = await _notifications.getNotificationAppLaunchDetails();
+      print('🔍 Checking launch details: ${details?.didNotificationLaunchApp}');
+      
+      if (details?.didNotificationLaunchApp ?? false) {
+        final response = details?.notificationResponse;
+        if (response != null) {
+          print('🚀 App launched from notification');
+          _handleNotificationTap(response);
+        }
+      }
+    } catch (e) {
+      print('❌ Error checking launch details: $e');
+    }
+  }
 }
 
 // Firestore logging helper for Notification history
 Future<void> _logNotificationHistory({
   required String status,
   String? medicineName,
+  String? dosage,
+  String? notificationType,
 }) async {
   try {
     final user = FirebaseAuth.instance.currentUser;
@@ -973,7 +1058,10 @@ Future<void> _logNotificationHistory({
         .add({
           'medicineName': medicineName ?? 'Notification',
           'status': status,
+          'dosage': dosage,
+          'notificationType': notificationType ?? 'reminder',
           'timestamp': FieldValue.serverTimestamp(),
+          'isRead': status == 'Opened' ? true : false,
         });
   } catch (e) {
     // Swallow errors to avoid breaking notification flow
@@ -981,29 +1069,106 @@ Future<void> _logNotificationHistory({
   }
 }
 
-// Foreground tap handler: log that user opened the notification
+// Foreground tap handler: navigate to confirmation dialog
 void _onNotificationResponse(NotificationResponse response) {
+  print('📱 Notification tapped (foreground)');
+  _handleNotificationTap(response);
+}
+
+// Helper to handle notification tap - SHOWS DIALOG FOR EVERY NOTIFICATION CLICK
+void _handleNotificationTap(NotificationResponse response) {
   try {
     final payload = response.payload;
-    if (payload == null) return;
+    print('📦 Payload: $payload');
+    
+    if (payload == null || payload.isEmpty) {
+      print('❌ Payload is null or empty');
+      return;
+    }
+    
     final data = jsonDecode(payload) as Map<String, dynamic>;
     final name = data['medicineName'] as String?;
+    final dosage = data['dosage'] as String?;
+    final type = data['type'] as String?;
+    
+    print('🔍 Medicine: $name, Type: $type, Dosage: $dosage');
+    
     _logNotificationHistory(status: 'Opened', medicineName: name);
-  } catch (_) {
-    // ignore errors when logging
+    
+    // ALWAYS show dialog for ANY medicine notification - NO RESTRICTIONS
+    if (name != null && name.isNotEmpty) {
+      // Small delay to ensure navigation context is ready
+      Future.delayed(const Duration(milliseconds: 200), () {
+        print('🚀 Attempting to navigate to dialog...');
+        final navigator = navigatorKey.currentState;
+        if (navigator != null) {
+          // Push new dialog - allows multiple dialogs if clicking multiple notifications
+          navigator.push(
+            MaterialPageRoute(
+              builder: (context) => TakeMedicineDialog(
+                medicineName: name,
+                dosage: dosage ?? 'Not specified',
+              ),
+              fullscreenDialog: true,
+            ),
+          );
+          print('✅ Dialog opened for: $name');
+        } else {
+          print('❌ Navigator is null - trying again...');
+          // Retry after a bit more delay
+          Future.delayed(const Duration(milliseconds: 500), () {
+            final retryNavigator = navigatorKey.currentState;
+            if (retryNavigator != null) {
+              retryNavigator.push(
+                MaterialPageRoute(
+                  builder: (context) => TakeMedicineDialog(
+                    medicineName: name,
+                    dosage: dosage ?? 'Not specified',
+                  ),
+                  fullscreenDialog: true,
+                ),
+              );
+              print('✅ Dialog opened on retry for: $name');
+            } else {
+              print('❌ Navigator still null after retry');
+            }
+          });
+        }
+      });
+    } else {
+      print('❌ Medicine name is null or empty');
+    }
+  } catch (e) {
+    print('❌ Error handling notification tap: $e');
   }
 }
 
 /// Background tap handler must be a top-level function
 @pragma('vm:entry-point')
 void notificationTapBackground(NotificationResponse response) {
-  try {
-    final payload = response.payload;
-    if (payload == null) return;
-    final data = jsonDecode(payload) as Map<String, dynamic>;
-    final name = data['medicineName'] as String?;
-    _logNotificationHistory(status: 'Opened', medicineName: name);
-  } catch (_) {
-    // ignore errors when logging
+  print('📱 Notification tapped (background)');
+  _handleNotificationTap(response);
+}
+
+// Helper methods for scheduling
+tz.TZDateTime _nextInstanceOfWeekdayAndTime(int hour, int minute, int weekday) {
+  final now = tz.TZDateTime.now(tz.local);
+  tz.TZDateTime scheduledDate = tz.TZDateTime(tz.local, now.year, now.month, now.day, hour, minute);
+  
+  while (scheduledDate.weekday != weekday || scheduledDate.isBefore(now)) {
+    scheduledDate = scheduledDate.add(const Duration(days: 1));
   }
+  
+  return scheduledDate;
+}
+
+tz.TZDateTime _nextInstanceOfTime(int hour, int minute) {
+  final now = tz.TZDateTime.now(tz.local);
+  tz.TZDateTime scheduledDate = tz.TZDateTime(tz.local, now.year, now.month, now.day, hour, minute);
+  
+  if (scheduledDate.isBefore(now)) {
+    scheduledDate = scheduledDate.add(const Duration(days: 1));
+  }
+  
+  return scheduledDate;
 }
