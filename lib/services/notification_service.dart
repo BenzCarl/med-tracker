@@ -474,6 +474,62 @@ class NotificationService {
     }
   }
 
+  /// Schedule notifications every minute for testing/development
+  static Future<void> scheduleEveryMinute({
+    required String tag,
+    required String title,
+    required String body,
+  }) async {
+    try {
+      await init();
+      await requestPermissions();
+      await requestExactAlarmsPermission();
+
+      const AndroidNotificationDetails androidDetails =
+          AndroidNotificationDetails(
+        'med_channel',
+        'Medicine Reminders',
+        channelDescription: 'Reminders to take your medicines',
+        importance: Importance.high,
+        priority: Priority.high,
+        playSound: true,
+        enableVibration: true,
+      );
+
+      const NotificationDetails details = NotificationDetails(
+        android: androidDetails,
+      );
+
+      // Schedule 60 notifications for the next 60 minutes
+      for (int i = 1; i <= 60; i++) {
+        final now = tz.TZDateTime.now(tz.local);
+        final scheduledDate = now.add(Duration(minutes: i));
+        final id = (tag.hashCode.abs() % 900000) + i;
+
+        await _notifications.zonedSchedule(
+          id,
+          title,
+          body,
+          scheduledDate,
+          details,
+          androidScheduleMode: AndroidScheduleMode.exactAllowWhileIdle,
+          payload: jsonEncode({
+            'tag': tag,
+            'medicineName': tag,
+            'status': 'Reminder',
+            'type': 'every_minute',
+            'minute': i,
+          }),
+        );
+      }
+
+      print('✅ [EVERY MINUTE] Scheduled 60 minute notifications for: $tag');
+    } catch (e) {
+      print('❌ Error scheduling every-minute notifications for $tag: $e');
+      rethrow;
+    }
+  }
+
   /// Check pending notifications (for debugging) - FIXED RETURN TYPE
   static Future<void> debugPendingNotifications() async {
     final pending = await _notifications.pendingNotificationRequests();

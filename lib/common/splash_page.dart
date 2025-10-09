@@ -1,8 +1,21 @@
 import 'package:flutter/material.dart';
 import 'choice_page.dart';
+import '../services/enhanced_notification_service.dart';
 
-class SplashPage extends StatelessWidget {
+class SplashPage extends StatefulWidget {
   const SplashPage({super.key});
+
+  @override
+  State<SplashPage> createState() => _SplashPageState();
+}
+
+class _SplashPageState extends State<SplashPage> {
+  @override
+  void initState() {
+    super.initState();
+    // Best-effort fallback: reconcile any due doses on app start
+    EnhancedNotificationService.reconcileDueDoses();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -98,6 +111,8 @@ class SplashPage extends StatelessWidget {
                       ),
                     ),
                     onPressed: () {
+                      // Run another reconciliation when user proceeds
+                      EnhancedNotificationService.reconcileDueDoses();
                       Navigator.pushReplacement(
                         context,
                         MaterialPageRoute(builder: (_) => const ChoicePage()),

@@ -1,0 +1,82 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    function isSignedIn() {
+      return request.auth != null;
+    }
+    function isOwner(userId) {
+      return isSignedIn() && request.auth.uid == userId;
+    }
+    // Helpers for maps (works on document maps, not lists)
+    function hasOnlyAllowedKeys(allowed) {
+      return request.resource.data.keys().hasOnly(allowed);
+    }
+    function hasAllKeys(required) {
+      return request.resource.data.keys().hasAll(required);
+    }
+
+    match /users/{userId} {
+      allow read, write: if isOwner(userId);
+
+      // Medicines
+      match /medicines/{medicineId} {
+        allow read: if isOwner(userId);
+        allow create, update: if isOwner(userId)
+          && hasOnlyAllowedKeys([
+            'name','dosage','frequency','description','startDate','endDate',
+            'illness','initialStock','frequencyCode','createdAt','updatedAt'
+          ])
+          && hasAllKeys(['name','dosage','frequency','createdAt'])
+          && request.resource.data.name is string
+          && request.resource.data.dosage is string
+          && request.resource.data.frequency is string
+          && (!('initialStock' in request.resource.data)
+              || (request.resource.data.initialStock is int
+                  && request.resource.data.initialStock >= 0));
+        allow delete: if isOwner(userId);
+      }
+
+      // Schedules
+      match /schedules/{scheduleId} {
+        allow read: if isOwner(userId);
+        allow create, update: if isOwner(userId)
+          && hasOnlyAllowedKeys([
+            'medicineName','dosage','time','days','interval','createdAt','updatedAt'
+          ])
+          && hasAllKeys(['medicineName','time','days'])
+          && request.resource.data.medicineName is string
+          && request.resource.data.time is string
+          && request.resource.data.days is list
+          && request.resource.data.days.size() >= 0
+          && (!('interval' in request.resource.data)
+              || request.resource.data.interval in ['Daily','q2h','q4h','q6h','q12h']);
+        allow delete: if isOwner(userId);
+      }
+
+      // Inventory
+      match /inventory/{inventoryId} {
+        allow read: if isOwner(userId);
+        allow create, update: if isOwner(userId)
+          && hasOnlyAllowedKeys(['medicineName','quantity','datePurchased','createdAt','updatedAt'])
+          && hasAllKeys(['medicineName','quantity'])
+          && request.resource.data.medicineName is string
+          && request.resource.data.quantity is int
+          && request.resource.data.quantity >= 0;
+        allow delete: if isOwner(userId);
+      }
+
+      // History
+      match /history/{historyId} {
+        allow read: if isOwner(userId);
+        allow create, update: if isOwner(userId)
+          && hasOnlyAllowedKeys(['medicineName','status','timestamp'])
+          && hasAllKeys(['medicineName','status','timestamp'])
+          && request.resource.data.medicineName is string
+          && request.resource.data.status in ['Reminder','Taken','Missed','Test','Scheduled','Opened']
+          && request.resource.data.timestamp is timestamp;
+        allow delete: if isOwner(userId);
+      }
+    }
+  }
+}

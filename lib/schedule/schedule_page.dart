@@ -4,6 +4,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/services.dart';
 import '../services/notification_service.dart';
+import '../services/enhanced_notification_service.dart';
 import '../common/dashboard_page.dart';
 
 class SchedulePage extends StatelessWidget {
@@ -175,6 +176,16 @@ class SchedulePage extends StatelessWidget {
                       weekdays: weekdaysInts,
                     );
                   }
+
+                  // Also use enhanced notification service for better Android 12-14 support
+                  await EnhancedNotificationService.scheduleEnhancedReminder(
+                    medicineName: medicineName,
+                    dosage: dosage,
+                    time: selectedTime!,
+                    days: daysToSave,
+                    interval: interval,
+                    enableStockReduction: true,
+                  );
 
                   // Show success message
                   if (context.mounted) {
