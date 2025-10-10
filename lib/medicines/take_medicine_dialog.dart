@@ -2,15 +2,18 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import '../services/notification_service.dart';
 
 class TakeMedicineDialog extends StatefulWidget {
   final String medicineName;
   final String dosage;
+  final int? notificationId; // Optional notification ID to dismiss after response
 
   const TakeMedicineDialog({
     super.key,
     required this.medicineName,
     required this.dosage,
+    this.notificationId,
   });
 
   @override
@@ -82,6 +85,11 @@ class _TakeMedicineDialogState extends State<TakeMedicineDialog>
         'status': 'Missed',
         'timestamp': FieldValue.serverTimestamp(),
       });
+    }
+    
+    // Dismiss the notification from system tray if ID is provided
+    if (widget.notificationId != null) {
+      await NotificationService.cancelNotificationById(widget.notificationId!);
     }
     
     // Close current dialog
@@ -232,6 +240,11 @@ class _TakeMedicineDialogState extends State<TakeMedicineDialog>
         await _decreaseStock(user.uid);
       }
       // If didTake is false (missed), stock remains unchanged
+
+      // Dismiss the notification from system tray if ID is provided
+      if (widget.notificationId != null) {
+        await NotificationService.cancelNotificationById(widget.notificationId!);
+      }
 
       // Show success animation and close
       await _showSuccessAnimation(didTake);

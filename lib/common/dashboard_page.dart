@@ -11,6 +11,10 @@ import '../notification/notification_page.dart';
 import '../notification/active_notifications_page.dart';
 import '../medicines/take_medicine_dialog.dart';
 import '../services/notification_service.dart';
+import '../analytics/analytics_page.dart';
+import '../search/search_page.dart';
+import '../reports/reports_page.dart';
+import '../settings/settings_page.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'dart:async';
 
@@ -389,7 +393,7 @@ class HomeContent extends StatelessWidget {
                         Row(
                           children: [
                             Expanded(
-                              child: _buildActionCard(
+                              child: HomeContent._buildActionCard(
                                 context,
                                 Icons.local_hospital_rounded,
                                 "Add Illness",
@@ -404,7 +408,7 @@ class HomeContent extends StatelessWidget {
                             ),
                             const SizedBox(width: 12),
                             Expanded(
-                              child: _buildActionCard(
+                              child: HomeContent._buildActionCard(
                                 context,
                                 Icons.medication_rounded,
                                 "Add Medicine",
@@ -421,6 +425,61 @@ class HomeContent extends StatelessWidget {
                         ),
                       ],
                     ),
+                  ),
+                ),
+                const SizedBox(height: 20),
+                
+                // Quick Access Features
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 16),
+                  child: GridView.count(
+                    shrinkWrap: true,
+                    physics: const NeverScrollableScrollPhysics(),
+                    crossAxisCount: 4,
+                    mainAxisSpacing: 12,
+                    crossAxisSpacing: 12,
+                    children: [
+                      HomeContent._buildQuickAction(
+                        context,
+                        Icons.analytics_rounded,
+                        'Analytics',
+                        Colors.blue,
+                        () => Navigator.push(
+                          context,
+                          MaterialPageRoute(builder: (_) => const AnalyticsPage()),
+                        ),
+                      ),
+                      HomeContent._buildQuickAction(
+                        context,
+                        Icons.search_rounded,
+                        'Search',
+                        Colors.green,
+                        () => Navigator.push(
+                          context,
+                          MaterialPageRoute(builder: (_) => const SearchPage()),
+                        ),
+                      ),
+                      HomeContent._buildQuickAction(
+                        context,
+                        Icons.file_download_outlined,
+                        'Reports',
+                        Colors.orange,
+                        () => Navigator.push(
+                          context,
+                          MaterialPageRoute(builder: (_) => const ReportsPage()),
+                        ),
+                      ),
+                      HomeContent._buildQuickAction(
+                        context,
+                        Icons.settings_rounded,
+                        'Settings',
+                        Colors.purple,
+                        () => Navigator.push(
+                          context,
+                          MaterialPageRoute(builder: (_) => const SettingsPage()),
+                        ),
+                      ),
+                    ],
                   ),
                 ),
                 const SizedBox(height: 20),
@@ -453,321 +512,321 @@ class HomeContent extends StatelessWidget {
                         .orderBy("createdAt", descending: true)
                         .snapshots(),
                     builder: (context, snapshot) {
-                  if (snapshot.connectionState == ConnectionState.waiting) {
-                    return const Center(
-                      child: CircularProgressIndicator(
-                        color: Colors.blue,
-                      ),
-                    );
-                  }
-                  if (snapshot.hasError) {
-                    return Center(
-                      child: Column(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          Icon(Icons.error_outline, size: 64, color: Colors.red.shade300),
-                          const SizedBox(height: 16),
-                          const Text("Error loading medicines"),
-                        ],
-                      ),
-                    );
-                  }
-                  if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
-                    return Center(
-                      child: Column(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          Container(
-                            padding: const EdgeInsets.all(32),
-                            decoration: BoxDecoration(
-                              color: Colors.blue.shade50,
-                              shape: BoxShape.circle,
-                            ),
-                            child: Icon(
-                              Icons.medication_rounded,
-                              size: 80,
-                              color: Colors.blue.shade300,
-                            ),
+                      if (snapshot.connectionState == ConnectionState.waiting) {
+                        return const Center(
+                          child: CircularProgressIndicator(
+                            color: Colors.blue,
                           ),
-                          const SizedBox(height: 24),
-                          Text(
-                            "No Medicines Yet",
-                            style: TextStyle(
-                              fontSize: 22,
-                              fontWeight: FontWeight.bold,
-                              color: Colors.grey.shade700,
-                            ),
-                          ),
-                          const SizedBox(height: 8),
-                          Text(
-                            "Tap 'Add Medicine' to get started",
-                            style: TextStyle(
-                              fontSize: 14,
-                              color: Colors.grey.shade500,
-                            ),
-                          ),
-                        ],
-                      ),
-                    );
-                  }
-
-                  final docs = snapshot.data!.docs;
-                  return ListView.builder(
-                    padding: const EdgeInsets.symmetric(horizontal: 16),
-                    itemCount: docs.length,
-                    itemBuilder: (context, index) {
-                      final med = docs[index].data();
-                      return Container(
-                        margin: const EdgeInsets.only(bottom: 16),
-                        decoration: BoxDecoration(
-                          gradient: LinearGradient(
-                            begin: Alignment.topLeft,
-                            end: Alignment.bottomRight,
-                            colors: [
-                              Colors.white,
-                              Colors.blue.shade50,
+                        );
+                      }
+                      if (snapshot.hasError) {
+                        return Center(
+                          child: Column(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              Icon(Icons.error_outline, size: 64, color: Colors.red.shade300),
+                              const SizedBox(height: 16),
+                              const Text("Error loading medicines"),
                             ],
                           ),
-                          borderRadius: BorderRadius.circular(20),
-                          boxShadow: [
-                            BoxShadow(
-                              color: Colors.blue.withOpacity(0.1),
-                              blurRadius: 10,
-                              offset: const Offset(0, 5),
-                            ),
-                          ],
-                        ),
-                        child: Material(
-                          color: Colors.transparent,
-                          child: InkWell(
-                            borderRadius: BorderRadius.circular(20),
-                            onTap: () {
-                              Navigator.push(
-                                context,
-                                MaterialPageRoute(
-                                  builder: (_) => EditMedicinePage(
-                                    medicineDoc: snapshot.data!.docs[index],
-                                  ),
+                        );
+                      }
+                      if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
+                        return Center(
+                          child: Column(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              Container(
+                                padding: const EdgeInsets.all(32),
+                                decoration: BoxDecoration(
+                                  color: Colors.blue.shade50,
+                                  shape: BoxShape.circle,
                                 ),
-                              );
-                            },
-                            child: Padding(
-                              padding: const EdgeInsets.all(16),
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Row(
-                                    children: [
-                                      Container(
-                                        padding: const EdgeInsets.all(12),
-                                        decoration: BoxDecoration(
-                                          gradient: LinearGradient(
-                                            colors: [
-                                              Colors.blue.shade400,
-                                              Colors.purple.shade400,
-                                            ],
-                                          ),
-                                          borderRadius: BorderRadius.circular(12),
-                                        ),
-                                        child: const Icon(
-                                          Icons.medication_rounded,
-                                          color: Colors.white,
-                                          size: 28,
-                                        ),
+                                child: Icon(
+                                  Icons.medication_rounded,
+                                  size: 80,
+                                  color: Colors.blue.shade300,
+                                ),
+                              ),
+                              const SizedBox(height: 24),
+                              Text(
+                                "No Medicines Yet",
+                                style: TextStyle(
+                                  fontSize: 22,
+                                  fontWeight: FontWeight.bold,
+                                  color: Colors.grey.shade700,
+                                ),
+                              ),
+                              const SizedBox(height: 8),
+                              Text(
+                                "Tap 'Add Medicine' to get started",
+                                style: TextStyle(
+                                  fontSize: 14,
+                                  color: Colors.grey.shade500,
+                                ),
+                              ),
+                            ],
+                          ),
+                        );
+                      }
+
+                      final docs = snapshot.data!.docs;
+                      return ListView.builder(
+                        padding: const EdgeInsets.symmetric(horizontal: 16),
+                        itemCount: docs.length,
+                        itemBuilder: (context, index) {
+                          final med = docs[index].data();
+                          return Container(
+                            margin: const EdgeInsets.only(bottom: 16),
+                            decoration: BoxDecoration(
+                              gradient: LinearGradient(
+                                begin: Alignment.topLeft,
+                                end: Alignment.bottomRight,
+                                colors: [
+                                  Colors.white,
+                                  Colors.blue.shade50,
+                                ],
+                              ),
+                              borderRadius: BorderRadius.circular(20),
+                              boxShadow: [
+                                BoxShadow(
+                                  color: Colors.blue.withOpacity(0.1),
+                                  blurRadius: 10,
+                                  offset: const Offset(0, 5),
+                                ),
+                              ],
+                            ),
+                            child: Material(
+                              color: Colors.transparent,
+                              child: InkWell(
+                                borderRadius: BorderRadius.circular(20),
+                                onTap: () {
+                                  Navigator.push(
+                                    context,
+                                    MaterialPageRoute(
+                                      builder: (_) => EditMedicinePage(
+                                        medicineDoc: snapshot.data!.docs[index],
                                       ),
-                                      const SizedBox(width: 16),
-                                      Expanded(
-                                        child: Column(
-                                          crossAxisAlignment: CrossAxisAlignment.start,
-                                          children: [
-                                            Text(
-                                              med["name"] ?? "Unknown",
-                                              style: TextStyle(
-                                                fontSize: 18,
-                                                fontWeight: FontWeight.bold,
-                                                color: Colors.grey.shade800,
+                                    ),
+                                  );
+                                },
+                                child: Padding(
+                                  padding: const EdgeInsets.all(16),
+                                  child: Column(
+                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    children: [
+                                      Row(
+                                        children: [
+                                          Container(
+                                            padding: const EdgeInsets.all(12),
+                                            decoration: BoxDecoration(
+                                              gradient: LinearGradient(
+                                                colors: [
+                                                  Colors.blue.shade400,
+                                                  Colors.purple.shade400,
+                                                ],
                                               ),
+                                              borderRadius: BorderRadius.circular(12),
                                             ),
-                                            const SizedBox(height: 4),
-                                            Row(
+                                            child: const Icon(
+                                              Icons.medication_rounded,
+                                              color: Colors.white,
+                                              size: 28,
+                                            ),
+                                          ),
+                                          const SizedBox(width: 16),
+                                          Expanded(
+                                            child: Column(
+                                              crossAxisAlignment: CrossAxisAlignment.start,
                                               children: [
-                                                Icon(Icons.medication, size: 14, color: Colors.grey.shade600),
-                                                const SizedBox(width: 4),
                                                 Text(
-                                                  med["dosage"] ?? "No dosage",
+                                                  med["name"] ?? "Unknown",
                                                   style: TextStyle(
-                                                    fontSize: 14,
-                                                    color: Colors.grey.shade600,
+                                                    fontSize: 18,
+                                                    fontWeight: FontWeight.bold,
+                                                    color: Colors.grey.shade800,
                                                   ),
+                                                ),
+                                                const SizedBox(height: 4),
+                                                Row(
+                                                  children: [
+                                                    Icon(Icons.medication, size: 14, color: Colors.grey.shade600),
+                                                    const SizedBox(width: 4),
+                                                    Text(
+                                                      med["dosage"] ?? "No dosage",
+                                                      style: TextStyle(
+                                                        fontSize: 14,
+                                                        color: Colors.grey.shade600,
+                                                      ),
+                                                    ),
+                                                  ],
                                                 ),
                                               ],
                                             ),
-                                          ],
-                                        ),
-                                      ),
-                                      Icon(
-                                        Icons.chevron_right,
-                                        color: Colors.grey.shade400,
-                                      ),
-                                    ],
-                                  ),
-                                  const SizedBox(height: 12),
-                                  Divider(color: Colors.grey.shade200),
-                                  const SizedBox(height: 8),
-                                  Row(
-                                    children: [
-                                      Icon(Icons.local_hospital, size: 16, color: Colors.red.shade400),
-                                      const SizedBox(width: 8),
-                                      Text(
-                                        med["illness"] ?? "No illness",
-                                        style: TextStyle(
-                                          fontSize: 13,
-                                          color: Colors.grey.shade700,
-                                        ),
-                                      ),
-                                    ],
-                                  ),
-                                  const SizedBox(height: 8),
-                              Padding(
-                                padding: const EdgeInsets.only(top: 4.0),
-                                child: FutureBuilder<QuerySnapshot>(
-                                  future: FirebaseFirestore.instance
-                                      .collection("users")
-                                      .doc(user.uid)
-                                      .collection("schedules")
-                                      .where(
-                                        "medicineName",
-                                        isEqualTo: med["name"],
-                                      )
-                                      .limit(1)
-                                      .get(),
-                                  builder: (context, snapshot) {
-                                    if (!snapshot.hasData ||
-                                        snapshot.data!.docs.isEmpty) {
-                                      return Row(
-                                        children: [
-                                          const Icon(Icons.schedule, size: 16),
-                                          const SizedBox(width: 4),
-                                          const Expanded(
-                                            child: Text("No schedule set"),
+                                          ),
+                                          Icon(
+                                            Icons.chevron_right,
+                                            color: Colors.grey.shade400,
                                           ),
                                         ],
-                                      );
-                                    }
-                                    final schedule =
-                                        snapshot.data!.docs.first.data()
-                                            as Map<String, dynamic>;
-                                    return Row(
-                                      crossAxisAlignment:
-                                          CrossAxisAlignment.start,
-                                      children: [
-                                        const Icon(Icons.schedule, size: 16),
-                                        const SizedBox(width: 4),
-                                        Expanded(
-                                          child: Text(
-                                            "Next Intake: ${schedule["time"] ?? ""} (${(schedule["days"] as List).join(", ")})",
-                                            overflow: TextOverflow.visible,
-                                          ),
-                                        ),
-                                      ],
-                                    );
-                                  },
-                                ),
-                              ),
-                              Padding(
-                                padding: const EdgeInsets.only(top: 4.0),
-                                child: FutureBuilder<QuerySnapshot>(
-                                  future: FirebaseFirestore.instance
-                                      .collection("users")
-                                      .doc(user.uid)
-                                      .collection("inventory")
-                                      .where(
-                                        "medicineName",
-                                        isEqualTo: med["name"],
-                                      )
-                                      .get(),
-                                  builder: (context, snapshot) {
-                                    final int initialStock = (() {
-                                      final val = med["initialStock"];
-                                      if (val is int) return val;
-                                      if (val is String) return int.tryParse(val) ?? 0;
-                                      if (val is double) return val.toInt();
-                                      return 0;
-                                    })();
-
-                                    int purchasesSum = 0;
-                                    if (snapshot.hasData && snapshot.data!.docs.isNotEmpty) {
-                                      purchasesSum = snapshot.data!.docs.fold<int>(0, (sum, doc) {
-                                        final q = doc["quantity"];
-                                        if (q is int) return sum + q;
-                                        if (q is double) return sum + q.toInt();
-                                        if (q is String) return sum + (int.tryParse(q) ?? 0);
-                                        return sum;
-                                      });
-                                    }
-
-                                    final int totalQuantity = initialStock + purchasesSum;
-
-                                    return Container(
-                                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                                      decoration: BoxDecoration(
-                                        color: totalQuantity <= 0
-                                            ? Colors.red.shade50
-                                            : totalQuantity < 10
-                                                ? Colors.orange.shade50
-                                                : Colors.green.shade50,
-                                        borderRadius: BorderRadius.circular(8),
-                                        border: Border.all(
-                                          color: totalQuantity <= 0
-                                              ? Colors.red.shade200
-                                              : totalQuantity < 10
-                                                  ? Colors.orange.shade200
-                                                  : Colors.green.shade200,
-                                        ),
                                       ),
-                                      child: Row(
-                                        mainAxisSize: MainAxisSize.min,
+                                      const SizedBox(height: 12),
+                                      Divider(color: Colors.grey.shade200),
+                                      const SizedBox(height: 8),
+                                      Row(
                                         children: [
-                                          Icon(
-                                            Icons.inventory_2_rounded,
-                                            size: 16,
-                                            color: totalQuantity <= 0
-                                                ? Colors.red.shade700
-                                                : totalQuantity < 10
-                                                    ? Colors.orange.shade700
-                                                    : Colors.green.shade700,
-                                          ),
-                                          const SizedBox(width: 6),
+                                          Icon(Icons.local_hospital, size: 16, color: Colors.red.shade400),
+                                          const SizedBox(width: 8),
                                           Text(
-                                            totalQuantity <= 0
-                                                ? "Out of stock"
-                                                : totalQuantity < 10
-                                                    ? "Low: $totalQuantity left"
-                                                    : "Stock: $totalQuantity",
+                                            med["illness"] ?? "No illness",
                                             style: TextStyle(
-                                              fontSize: 12,
-                                              fontWeight: FontWeight.w600,
-                                              color: totalQuantity <= 0
-                                                  ? Colors.red.shade700
-                                                  : totalQuantity < 10
-                                                      ? Colors.orange.shade700
-                                                      : Colors.green.shade700,
+                                              fontSize: 13,
+                                              color: Colors.grey.shade700,
                                             ),
                                           ),
                                         ],
                                       ),
-                                    );
-                                  },
+                                      const SizedBox(height: 8),
+                                      Padding(
+                                        padding: const EdgeInsets.only(top: 4.0),
+                                        child: FutureBuilder<QuerySnapshot>(
+                                          future: FirebaseFirestore.instance
+                                              .collection("users")
+                                              .doc(user.uid)
+                                              .collection("schedules")
+                                              .where(
+                                                "medicineName",
+                                                isEqualTo: med["name"],
+                                              )
+                                              .limit(1)
+                                              .get(),
+                                          builder: (context, snapshot) {
+                                            if (!snapshot.hasData ||
+                                                snapshot.data!.docs.isEmpty) {
+                                              return Row(
+                                                children: [
+                                                  const Icon(Icons.schedule, size: 16),
+                                                  const SizedBox(width: 4),
+                                                  const Expanded(
+                                                    child: Text("No schedule set"),
+                                                  ),
+                                                ],
+                                              );
+                                            }
+                                            final schedule =
+                                                snapshot.data!.docs.first.data()
+                                                    as Map<String, dynamic>;
+                                            return Row(
+                                              crossAxisAlignment:
+                                                  CrossAxisAlignment.start,
+                                              children: [
+                                                const Icon(Icons.schedule, size: 16),
+                                                const SizedBox(width: 4),
+                                                Expanded(
+                                                  child: Text(
+                                                    "Next Intake: ${schedule["time"] ?? ""} (${(schedule["days"] as List).join(", ")})",
+                                                    overflow: TextOverflow.visible,
+                                                  ),
+                                                ),
+                                              ],
+                                            );
+                                          },
+                                        ),
+                                      ),
+                                      Padding(
+                                        padding: const EdgeInsets.only(top: 4.0),
+                                        child: FutureBuilder<QuerySnapshot>(
+                                          future: FirebaseFirestore.instance
+                                              .collection("users")
+                                              .doc(user.uid)
+                                              .collection("inventory")
+                                              .where(
+                                                "medicineName",
+                                                isEqualTo: med["name"],
+                                              )
+                                              .get(),
+                                          builder: (context, snapshot) {
+                                            final int initialStock = (() {
+                                              final val = med["initialStock"];
+                                              if (val is int) return val;
+                                              if (val is String) return int.tryParse(val) ?? 0;
+                                              if (val is double) return val.toInt();
+                                              return 0;
+                                            })();
+
+                                            int purchasesSum = 0;
+                                            if (snapshot.hasData && snapshot.data!.docs.isNotEmpty) {
+                                              purchasesSum = snapshot.data!.docs.fold<int>(0, (sum, doc) {
+                                                final q = doc["quantity"];
+                                                if (q is int) return sum + q;
+                                                if (q is double) return sum + q.toInt();
+                                                if (q is String) return sum + (int.tryParse(q) ?? 0);
+                                                return sum;
+                                              });
+                                            }
+
+                                            final int totalQuantity = initialStock + purchasesSum;
+
+                                            return Container(
+                                              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                                              decoration: BoxDecoration(
+                                                color: totalQuantity <= 0
+                                                    ? Colors.red.shade50
+                                                    : totalQuantity < 10
+                                                        ? Colors.orange.shade50
+                                                        : Colors.green.shade50,
+                                                borderRadius: BorderRadius.circular(8),
+                                                border: Border.all(
+                                                  color: totalQuantity <= 0
+                                                      ? Colors.red.shade200
+                                                      : totalQuantity < 10
+                                                          ? Colors.orange.shade200
+                                                          : Colors.green.shade200,
+                                                ),
+                                              ),
+                                              child: Row(
+                                                mainAxisSize: MainAxisSize.min,
+                                                children: [
+                                                  Icon(
+                                                    Icons.inventory_2_rounded,
+                                                    size: 16,
+                                                    color: totalQuantity <= 0
+                                                        ? Colors.red.shade700
+                                                        : totalQuantity < 10
+                                                            ? Colors.orange.shade700
+                                                            : Colors.green.shade700,
+                                                  ),
+                                                  const SizedBox(width: 6),
+                                                  Text(
+                                                    totalQuantity <= 0
+                                                        ? "Out of stock"
+                                                        : totalQuantity < 10
+                                                            ? "Low: $totalQuantity left"
+                                                            : "Stock: $totalQuantity",
+                                                    style: TextStyle(
+                                                      fontSize: 12,
+                                                      fontWeight: FontWeight.w600,
+                                                      color: totalQuantity <= 0
+                                                          ? Colors.red.shade700
+                                                          : totalQuantity < 10
+                                                              ? Colors.orange.shade700
+                                                              : Colors.green.shade700,
+                                                    ),
+                                                  ),
+                                                ],
+                                              ),
+                                            );
+                                          },
+                                        ),
+                                      ),
+                                    ],
+                                  ),
                                 ),
                               ),
-                                ],
-                              ),
                             ),
-                          ),
-                        ),
+                          );
+                        },
                       );
-                    },
-                  );
                     },
                   ),
                 ),
@@ -819,6 +878,60 @@ class HomeContent extends StatelessWidget {
                   fontSize: 13,
                   fontWeight: FontWeight.w600,
                 ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  static Widget _buildQuickAction(
+    BuildContext context,
+    IconData icon,
+    String label,
+    Color color,
+    VoidCallback onTap,
+  ) {
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(12),
+        child: Container(
+          padding: const EdgeInsets.all(12),
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(12),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withOpacity(0.05),
+                blurRadius: 10,
+                offset: const Offset(0, 5),
+              ),
+            ],
+          ),
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Container(
+                padding: const EdgeInsets.all(8),
+                decoration: BoxDecoration(
+                  color: color.withOpacity(0.2),
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: Icon(icon, color: color, size: 20),
+              ),
+              const SizedBox(height: 6),
+              Text(
+                label,
+                textAlign: TextAlign.center,
+                style: const TextStyle(
+                  fontSize: 11,
+                  fontWeight: FontWeight.w600,
+                ),
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
               ),
             ],
           ),

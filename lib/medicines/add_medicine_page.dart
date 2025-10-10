@@ -106,7 +106,7 @@ class _AddMedicinePageState extends State<AddMedicinePage> {
         }
       }
 
-      // Show loading indicator
+      // Show brief loading indicator
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
@@ -121,10 +121,10 @@ class _AddMedicinePageState extends State<AddMedicinePage> {
                   ),
                 ),
                 SizedBox(width: 16),
-                Text("Saving medicine and scheduling notifications..."),
+                Text("Saving medicine..."),
               ],
             ),
-            duration: Duration(seconds: 10),
+            duration: Duration(seconds: 2),
           ),
         );
       }
@@ -144,23 +144,28 @@ class _AddMedicinePageState extends State<AddMedicinePage> {
           medData["illness"] = _selectedIllness;
         }
 
+        // Save medicine to Firestore (fast operation)
         await FirebaseFirestore.instance
             .collection("users")
             .doc(user.uid)
             .collection("medicines")
             .add(medData);
 
-        // Create schedule if enabled
+        // ⚡ Run notification scheduling asynchronously in background (non-blocking)
         if (_createSchedule) {
           // Ensure time is set (should be set by validation above)
           if (_selectedTime == null && _interval == "q2m") {
             _selectedTime = TimeOfDay.now();
           }
           if (_selectedTime != null) {
-            await _saveSchedule(user.uid);
+            // Fire and forget - don't wait for notification scheduling
+            _saveSchedule(user.uid).catchError((e) {
+              print("Background notification scheduling error: $e");
+            });
           }
         }
 
+        // ⚡ Show immediate success and navigate back (don't wait for notifications)
         if (mounted) {
           ScaffoldMessenger.of(context).clearSnackBars();
           ScaffoldMessenger.of(context).showSnackBar(
@@ -173,18 +178,18 @@ class _AddMedicinePageState extends State<AddMedicinePage> {
                     child: Text(
                       _createSchedule
                           ? _interval == "q2m"
-                              ? "Medicine added! Notifications will start in 2 minutes."
-                              : "Medicine added with schedule and notifications set!"
+                              ? "Medicine saved! Notifications scheduling in background..."
+                              : "Medicine saved! Notifications scheduling in background..."
                           : "Medicine added successfully",
                     ),
                   ),
                 ],
               ),
               backgroundColor: Colors.green,
-              duration: const Duration(seconds: 3),
+              duration: const Duration(seconds: 2),
             ),
           );
-          Navigator.pop(context); // go back after saving
+          Navigator.pop(context); // ⚡ Navigate back immediately
         }
       } catch (e) {
         if (mounted) {
@@ -203,8 +208,8 @@ class _AddMedicinePageState extends State<AddMedicinePage> {
   /// ✅ Save schedule to Firestore and set up notifications
   Future<void> _saveSchedule(String userId) async {
     try {
-      // Request notifications permission (Android 13+)
-      await NotificationService.requestPermissions();
+      // ⚡ Request permissions asynchronously (don't block everything)
+      final permissionsFuture = NotificationService.requestPermissions();
 
       // ✅ Prepare days (strings)
       List<String> daysToSave;
@@ -223,19 +228,22 @@ class _AddMedicinePageState extends State<AddMedicinePage> {
       final medicineName = _nameController.text;
       final dosage = "$_dosageValue ${_dosageUnitController.text}";
 
-      // ✅ Save schedule to Firestore
-      await FirebaseFirestore.instance
-          .collection("users")
-          .doc(userId)
-          .collection("schedules")
-          .add({
-            "medicineName": medicineName,
-            "dosage": dosage,
-            "time": _selectedTime?.format(context),
-            "days": daysToSave,
-            "interval": _interval,
-            "createdAt": FieldValue.serverTimestamp(),
-          });
+      // ⚡ Run Firestore save and permission request in parallel
+      await Future.wait([
+        FirebaseFirestore.instance
+            .collection("users")
+            .doc(userId)
+            .collection("schedules")
+            .add({
+              "medicineName": medicineName,
+              "dosage": dosage,
+              "time": _selectedTime?.format(context),
+              "days": daysToSave,
+              "interval": _interval,
+              "createdAt": FieldValue.serverTimestamp(),
+            }),
+        permissionsFuture,
+      ]);
 
       // ✅ Map days to weekday integers
       final dayMap = {
@@ -253,8 +261,8 @@ class _AddMedicinePageState extends State<AddMedicinePage> {
           .where((i) => i != 0)
           .toList();
 
-      // ✅ Cancel old notifications
-      await NotificationService.cancelNotificationsForTag(medicineName);
+      // ⚡ Cancel old notifications (fire and forget, non-blocking)
+      NotificationService.cancelNotificationsForTag(medicineName);
 
       // ✅ Schedule new weekly notifications with exact time if possible
       if (weekdaysInts.isNotEmpty && _selectedTime != null) {
@@ -368,22 +376,22 @@ class _AddMedicinePageState extends State<AddMedicinePage> {
             }
           }
 
-          // Log to history
-          await NotificationService.logHistory(
+          // ⚡ Log to history and schedule enhanced reminder asynchronously (non-blocking)
+          NotificationService.logHistory(
             status: 'Scheduled',
             medicineName: medicineName,
-          );
+          ).catchError((e) => print("Log history error: $e"));
           
           // Only use enhanced notification service for non-minute intervals
           if (_interval != "q2m") {
-            await EnhancedNotificationService.scheduleEnhancedReminder(
+            EnhancedNotificationService.scheduleEnhancedReminder(
               medicineName: medicineName,
               dosage: dosage,
               time: _selectedTime!,
               days: daysToSave,
               interval: _interval,
               enableStockReduction: true, // Auto-reduce stock on scheduled time
-            );
+            ).catchError((e) => print("Enhanced reminder error: $e"));
           }
         } catch (e) {
           print("Error scheduling notifications: $e");

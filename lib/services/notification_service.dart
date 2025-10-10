@@ -149,6 +149,16 @@ class NotificationService {
     print('📋 Cancelled all notifications for: $tag');
   }
 
+  /// Cancel a specific notification by ID
+  static Future<void> cancelNotificationById(int id) async {
+    try {
+      await _notifications.cancel(id);
+      print('🗑️ Cancelled notification with ID: $id');
+    } catch (e) {
+      print('❌ Error cancelling notification $id: $e');
+    }
+  }
+
   static Future<void> scheduleWeekly({
     required String tag,
     required String title,
@@ -1108,6 +1118,7 @@ void _handleNotificationTap(NotificationResponse response) {
               builder: (context) => TakeMedicineDialog(
                 medicineName: name,
                 dosage: dosage ?? 'Not specified',
+                notificationId: response.id, // Pass notification ID for dismissal
               ),
               fullscreenDialog: true,
             ),
@@ -1124,6 +1135,7 @@ void _handleNotificationTap(NotificationResponse response) {
                   builder: (context) => TakeMedicineDialog(
                     medicineName: name,
                     dosage: dosage ?? 'Not specified',
+                    notificationId: response.id, // Pass notification ID for dismissal
                   ),
                   fullscreenDialog: true,
                 ),

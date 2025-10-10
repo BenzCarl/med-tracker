@@ -87,7 +87,9 @@ class _EditMedicinePageState extends State<EditMedicinePage> {
   Future<void> _saveChanges() async {
     final user = FirebaseAuth.instance.currentUser;
     if (user == null) return;
-    await widget.medicineDoc.reference.update({
+    
+    // ⚡ Prepare update futures
+    final medicineUpdateFuture = widget.medicineDoc.reference.update({
       "name": nameController.text,
       "dosage": dosageController.text,
       "description": descriptionController.text,
@@ -97,7 +99,8 @@ class _EditMedicinePageState extends State<EditMedicinePage> {
       "frequency": selectedFrequency,
     });
 
-    // If schedule exists, update it
+    // If schedule exists, prepare schedule update
+    Future<void>? scheduleUpdateFuture;
     if (scheduleDoc != null && selectedTime != null) {
       List<String> daysToSave;
       if (selectedDays == "Custom") {
@@ -109,7 +112,7 @@ class _EditMedicinePageState extends State<EditMedicinePage> {
       } else {
         daysToSave = [];
       }
-      await scheduleDoc!.reference.update({
+      scheduleUpdateFuture = scheduleDoc!.reference.update({
         "medicineName": nameController.text,
         "dosage": dosageController.text,
         "time": selectedTime?.format(context),
@@ -117,6 +120,14 @@ class _EditMedicinePageState extends State<EditMedicinePage> {
         "createdAt": FieldValue.serverTimestamp(),
       });
     }
+    
+    // ⚡ Run both updates in parallel
+    if (scheduleUpdateFuture != null) {
+      await Future.wait([medicineUpdateFuture, scheduleUpdateFuture]);
+    } else {
+      await medicineUpdateFuture;
+    }
+    
     Navigator.pop(context);
     ScaffoldMessenger.of(context).showSnackBar(
       const SnackBar(content: Text("Medicine and schedule updated")),

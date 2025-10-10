@@ -63,10 +63,14 @@ class _ActiveNotificationsPageState extends State<ActiveNotificationsPage> {
         builder: (context) => TakeMedicineDialog(
           medicineName: title.replaceFirst('Take your ', ''),
           dosage: body.replaceFirst('Dosage: ', ''),
+          notificationId: notification.id, // Pass notification ID for dismissal
         ),
         fullscreenDialog: true,
       ),
-    );
+    ).then((_) {
+      // Refresh the list after returning from dialog
+      _loadActiveNotifications();
+    });
   }
 
   @override
