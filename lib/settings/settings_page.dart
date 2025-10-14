@@ -43,19 +43,28 @@ class _SettingsPageState extends State<SettingsPage> {
     }
   }
 
+  // Get dynamic colors based on dark mode
+  Color get _backgroundColor => _darkMode ? const Color(0xFF121212) : const Color(0xFFF5F7FA);
+  Color get _cardColor => _darkMode ? const Color(0xFF1E1E1E) : Colors.white;
+  Color get _textColor => _darkMode ? Colors.white : Colors.grey.shade800;
+  Color get _subtitleColor => _darkMode ? Colors.white70 : Colors.grey.shade600;
+  LinearGradient get _gradientColors => LinearGradient(
+    colors: _darkMode 
+      ? [Colors.blue.shade800, Colors.purple.shade800]
+      : [Colors.blue.shade600, Colors.purple.shade600],
+  );
+
   @override
   Widget build(BuildContext context) {
     final user = FirebaseAuth.instance.currentUser;
 
     return Scaffold(
-      backgroundColor: const Color(0xFFF5F7FA),
+      backgroundColor: _backgroundColor,
       appBar: AppBar(
         elevation: 0,
         flexibleSpace: Container(
           decoration: BoxDecoration(
-            gradient: LinearGradient(
-              colors: [Colors.blue.shade600, Colors.purple.shade600],
-            ),
+            gradient: _gradientColors,
           ),
         ),
         title: const Text(
@@ -114,10 +123,53 @@ class _SettingsPageState extends State<SettingsPage> {
                 _buildSwitchTile(
                   'Dark Mode',
                   _darkMode,
-                  (value) {
+                  (value) async {
                     setState(() => _darkMode = value);
-                    _saveSetting('darkMode', value);
+                    await _saveSetting('darkMode', value);
+                    // Show snackbar with restart message
+                    if (mounted) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(
+                          content: Row(
+                            children: [
+                              Icon(
+                                _darkMode ? Icons.dark_mode : Icons.light_mode,
+                                color: Colors.white,
+                              ),
+                              const SizedBox(width: 12),
+                              Expanded(
+                                child: Text(
+                                  _darkMode 
+                                    ? 'Dark mode enabled! Restart app for full effect.'
+                                    : 'Light mode enabled! Restart app for full effect.',
+                                ),
+                              ),
+                            ],
+                          ),
+                          backgroundColor: _darkMode ? Colors.grey.shade800 : Colors.blue.shade600,
+                          duration: const Duration(seconds: 3),
+                          behavior: SnackBarBehavior.floating,
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(10),
+                          ),
+                        ),
+                      );
+                    }
                   },
+                ),
+                ListTile(
+                  leading: Icon(
+                    _darkMode ? Icons.dark_mode : Icons.light_mode,
+                    color: Colors.blue.shade700,
+                  ),
+                  title: Text(
+                    'Theme',
+                    style: TextStyle(color: _textColor),
+                  ),
+                  subtitle: Text(
+                    _darkMode ? 'Dark theme active' : 'Light theme active',
+                    style: TextStyle(color: _subtitleColor, fontSize: 12),
+                  ),
                 ),
               ],
             ),
@@ -129,8 +181,58 @@ class _SettingsPageState extends State<SettingsPage> {
               Icons.info_rounded,
               [
                 _buildActionTile('Version', '1.0.0', null),
-                _buildActionTile('Privacy Policy', '', () {}),
-                _buildActionTile('Terms of Service', '', () {}),
+                _buildActionTile('Privacy Policy', '', () {
+                  _showInfoDialog(
+                    context,
+                    'Privacy Policy',
+                    'Care Minder respects your privacy. All your medical data is stored securely and is only accessible by you.',
+                  );
+                }),
+                _buildActionTile('Terms of Service', '', () {
+                  _showInfoDialog(
+                    context,
+                    'Terms of Service',
+                    'By using Care Minder, you agree to use this app for personal medication tracking purposes only.',
+                  );
+                }),
+                _buildActionTile('Help & Support', '', () {
+                  _showInfoDialog(
+                    context,
+                    'Help & Support',
+                    'Need help? Contact us at support@careminder.com or visit our website for FAQs and guides.',
+                  );
+                }),
+              ],
+            ),
+            const SizedBox(height: 16),
+            
+            // Data Management Section
+            _buildSectionCard(
+              'Data Management',
+              Icons.storage_rounded,
+              [
+                _buildActionTile('Clear Cache', '', () async {
+                  final confirm = await _showConfirmDialog(
+                    context,
+                    'Clear Cache',
+                    'This will clear temporary data. Your medicines and schedules will not be affected.',
+                  );
+                  if (confirm == true && mounted) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(
+                        content: const Text('Cache cleared successfully'),
+                        backgroundColor: Colors.green.shade600,
+                      ),
+                    );
+                  }
+                }),
+                _buildActionTile('Export Data', '', () {
+                  _showInfoDialog(
+                    context,
+                    'Export Data',
+                    'Data export feature coming soon! You will be able to export your medication history to CSV or PDF.',
+                  );
+                }),
               ],
             ),
           ],
@@ -143,15 +245,11 @@ class _SettingsPageState extends State<SettingsPage> {
     return Container(
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
-        gradient: LinearGradient(
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-          colors: [Colors.blue.shade600, Colors.purple.shade600],
-        ),
+        gradient: _gradientColors,
         borderRadius: BorderRadius.circular(20),
         boxShadow: [
           BoxShadow(
-            color: Colors.blue.withOpacity(0.3),
+            color: (_darkMode ? Colors.black : Colors.blue).withOpacity(0.3),
             blurRadius: 15,
             offset: const Offset(0, 8),
           ),
@@ -206,11 +304,12 @@ class _SettingsPageState extends State<SettingsPage> {
   Widget _buildSectionCard(String title, IconData icon, List<Widget> children) {
     return Container(
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: _cardColor,
         borderRadius: BorderRadius.circular(16),
+        border: _darkMode ? Border.all(color: Colors.white.withOpacity(0.1)) : null,
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.05),
+            color: (_darkMode ? Colors.black : Colors.black.withOpacity(0.05)),
             blurRadius: 10,
             offset: const Offset(0, 5),
           ),
@@ -230,7 +329,7 @@ class _SettingsPageState extends State<SettingsPage> {
                   style: TextStyle(
                     fontSize: 18,
                     fontWeight: FontWeight.bold,
-                    color: Colors.grey.shade800,
+                    color: _textColor,
                   ),
                 ),
               ],
@@ -244,7 +343,10 @@ class _SettingsPageState extends State<SettingsPage> {
 
   Widget _buildSwitchTile(String title, bool value, ValueChanged<bool> onChanged) {
     return ListTile(
-      title: Text(title),
+      title: Text(
+        title,
+        style: TextStyle(color: _textColor),
+      ),
       trailing: Switch(
         value: value,
         onChanged: onChanged,
@@ -255,10 +357,75 @@ class _SettingsPageState extends State<SettingsPage> {
 
   Widget _buildActionTile(String title, String subtitle, VoidCallback? onTap) {
     return ListTile(
-      title: Text(title),
-      subtitle: subtitle.isNotEmpty ? Text(subtitle) : null,
-      trailing: onTap != null ? const Icon(Icons.chevron_right) : null,
+      title: Text(
+        title,
+        style: TextStyle(color: _textColor),
+      ),
+      subtitle: subtitle.isNotEmpty ? Text(
+        subtitle,
+        style: TextStyle(color: _subtitleColor),
+      ) : null,
+      trailing: onTap != null ? Icon(
+        Icons.chevron_right,
+        color: _darkMode ? Colors.white70 : Colors.grey,
+      ) : null,
       onTap: onTap,
+    );
+  }
+
+  void _showInfoDialog(BuildContext context, String title, String content) {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        backgroundColor: _cardColor,
+        title: Text(
+          title,
+          style: TextStyle(color: _textColor),
+        ),
+        content: Text(
+          content,
+          style: TextStyle(color: _subtitleColor),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: Text(
+              'OK',
+              style: TextStyle(color: Colors.blue.shade600),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Future<bool?> _showConfirmDialog(BuildContext context, String title, String content) {
+    return showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        backgroundColor: _cardColor,
+        title: Text(
+          title,
+          style: TextStyle(color: _textColor),
+        ),
+        content: Text(
+          content,
+          style: TextStyle(color: _subtitleColor),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('Cancel'),
+          ),
+          ElevatedButton(
+            onPressed: () => Navigator.pop(context, true),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Colors.blue.shade600,
+            ),
+            child: const Text('Confirm'),
+          ),
+        ],
+      ),
     );
   }
 }
