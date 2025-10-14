@@ -134,10 +134,73 @@ class _EditMedicinePageState extends State<EditMedicinePage> {
     );
   }
 
+  Future<void> _deleteMedicine() async {
+    final shouldDelete = await showDialog<bool>(
+      context: context,
+      builder: (context) {
+        return AlertDialog(
+          title: const Text("Delete Medicine"),
+          content: const Text("Are you sure you want to delete this medicine? This action cannot be undone."),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context, false),
+              child: const Text("Cancel"),
+            ),
+            ElevatedButton(
+              style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
+              onPressed: () => Navigator.pop(context, true),
+              child: const Text("Delete"),
+            ),
+          ],
+        );
+      },
+    );
+
+    if (shouldDelete == true) {
+      try {
+        // Delete the medicine document
+        await widget.medicineDoc.reference.delete();
+        
+        // Delete associated schedule if exists
+        if (scheduleDoc != null) {
+          await scheduleDoc!.reference.delete();
+        }
+        
+        if (mounted) {
+          Navigator.pop(context);
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text("Medicine deleted successfully"),
+              backgroundColor: Colors.green,
+            ),
+          );
+        }
+      } catch (e) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text("Error deleting medicine: $e"),
+              backgroundColor: Colors.red,
+            ),
+          );
+        }
+      }
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text("Edit Medicine")),
+      appBar: AppBar(
+        title: const Text("Edit Medicine"),
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.delete, color: Colors.red),
+            onPressed: _deleteMedicine,
+            tooltip: "Delete Medicine",
+          ),
+        ],
+      ),
       body: Padding(
         padding: const EdgeInsets.all(16.0),
         child: ListView(
@@ -155,19 +218,18 @@ class _EditMedicinePageState extends State<EditMedicinePage> {
               decoration: const InputDecoration(labelText: "Description"),
             ),
             const SizedBox(height: 8),
+            // FIXED: Use proper interval codes matching add_medicine_page.dart
             DropdownButtonFormField<String>(
               value: selectedFrequency,
               decoration: const InputDecoration(labelText: "Frequency"),
               items: const [
-                "Every 2 hours",
-                "Every 4 hours",
-                "Every 6 hours",
-                "Every 12 hours",
-                "Daily",
-                "Weekdays",
-                "Weekends",
-                "Custom",
-              ].map((e) => DropdownMenuItem(value: e, child: Text(e))).toList(),
+                DropdownMenuItem(value: 'Daily', child: Text('Daily (once/day)')),
+                DropdownMenuItem(value: 'q2m', child: Text('Every 2 minutes')),
+                DropdownMenuItem(value: 'q2h', child: Text('Every 2 hours')),
+                DropdownMenuItem(value: 'q4h', child: Text('Every 4 hours')),
+                DropdownMenuItem(value: 'q6h', child: Text('Every 6 hours')),
+                DropdownMenuItem(value: 'q12h', child: Text('Every 12 hours')),
+              ],
               onChanged: (v) => setState(() => selectedFrequency = v),
             ),
             TextField(

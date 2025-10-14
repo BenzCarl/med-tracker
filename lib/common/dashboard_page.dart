@@ -598,19 +598,7 @@ class HomeContent extends StatelessWidget {
                             ),
                             child: Material(
                               color: Colors.transparent,
-                              child: InkWell(
-                                borderRadius: BorderRadius.circular(20),
-                                onTap: () {
-                                  Navigator.push(
-                                    context,
-                                    MaterialPageRoute(
-                                      builder: (_) => EditMedicinePage(
-                                        medicineDoc: snapshot.data!.docs[index],
-                                      ),
-                                    ),
-                                  );
-                                },
-                                child: Padding(
+                              child: Padding(
                                   padding: const EdgeInsets.all(16),
                                   child: Column(
                                     crossAxisAlignment: CrossAxisAlignment.start,
@@ -664,9 +652,88 @@ class HomeContent extends StatelessWidget {
                                               ],
                                             ),
                                           ),
-                                          Icon(
-                                            Icons.chevron_right,
-                                            color: Colors.grey.shade400,
+                                          Row(
+                                            mainAxisSize: MainAxisSize.min,
+                                            children: [
+                                              IconButton(
+                                                icon: const Icon(Icons.edit, size: 20),
+                                                color: Colors.blue.shade600,
+                                                onPressed: () {
+                                                  Navigator.push(
+                                                    context,
+                                                    MaterialPageRoute(
+                                                      builder: (_) => EditMedicinePage(
+                                                        medicineDoc: snapshot.data!.docs[index],
+                                                      ),
+                                                    ),
+                                                  );
+                                                },
+                                                tooltip: "Edit Medicine",
+                                              ),
+                                              IconButton(
+                                                icon: const Icon(Icons.delete, size: 20),
+                                                color: Colors.red.shade600,
+                                                onPressed: () async {
+                                                  final shouldDelete = await showDialog<bool>(
+                                                    context: context,
+                                                    builder: (context) {
+                                                      return AlertDialog(
+                                                        title: const Text("Delete Medicine"),
+                                                        content: Text("Are you sure you want to delete ${med["name"]}?"),
+                                                        actions: [
+                                                          TextButton(
+                                                            onPressed: () => Navigator.pop(context, false),
+                                                            child: const Text("Cancel"),
+                                                          ),
+                                                          ElevatedButton(
+                                                            style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
+                                                            onPressed: () => Navigator.pop(context, true),
+                                                            child: const Text("Delete"),
+                                                          ),
+                                                        ],
+                                                      );
+                                                    },
+                                                  );
+
+                                                  if (shouldDelete == true) {
+                                                    try {
+                                                      await snapshot.data!.docs[index].reference.delete();
+                                                      
+                                                      // Delete associated schedule
+                                                      final scheduleQuery = await FirebaseFirestore.instance
+                                                          .collection("users")
+                                                          .doc(user.uid)
+                                                          .collection("schedules")
+                                                          .where("medicineName", isEqualTo: med["name"])
+                                                          .get();
+                                                      
+                                                      for (var doc in scheduleQuery.docs) {
+                                                        await doc.reference.delete();
+                                                      }
+                                                      
+                                                      if (context.mounted) {
+                                                        ScaffoldMessenger.of(context).showSnackBar(
+                                                          const SnackBar(
+                                                            content: Text("Medicine deleted successfully"),
+                                                            backgroundColor: Colors.green,
+                                                          ),
+                                                        );
+                                                      }
+                                                    } catch (e) {
+                                                      if (context.mounted) {
+                                                        ScaffoldMessenger.of(context).showSnackBar(
+                                                          SnackBar(
+                                                            content: Text("Error: $e"),
+                                                            backgroundColor: Colors.red,
+                                                          ),
+                                                        );
+                                                      }
+                                                    }
+                                                  }
+                                                },
+                                                tooltip: "Delete Medicine",
+                                              ),
+                                            ],
                                           ),
                                         ],
                                       ),
@@ -823,7 +890,7 @@ class HomeContent extends StatelessWidget {
                                   ),
                                 ),
                               ),
-                            ),
+
                           );
                         },
                       );

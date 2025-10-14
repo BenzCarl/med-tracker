@@ -19,7 +19,7 @@ class SchedulePage extends StatelessWidget {
     String selectedDays = "Weekdays";
     List<String> dayOptions = ["Weekdays", "Weekends", "Custom", "Daily"];
     List<String> customDays = [];
-    String interval = "Daily"; // Daily, q2h, q4h, q6h, q12h
+    String interval = "Daily"; // Daily, q2m, q2h, q4h, q6h, q12h
 
     showModalBottomSheet(
       context: context,
@@ -103,21 +103,25 @@ class SchedulePage extends StatelessWidget {
               // ✅ Schedule new weekly notifications with exact time if possible
               if (weekdaysInts.isNotEmpty) {
                 try {
-                  if (interval == "q1m") {
-                    // Every minute mode - for testing
+                  if (interval == "q2m") {
+                    // Every 2 minutes mode - for testing
                     final exactGranted = await NotificationService.requestExactAlarmsPermission();
                     if (exactGranted) {
-                      await NotificationService.scheduleEveryMinute(
+                      await NotificationService.scheduleIntervalMinutesExact(
                         tag: medicineName,
                         title: "Take your $medicineName",
                         body: "Dosage: $dosage",
-                      );
-                      await EnhancedNotificationService.scheduleEveryMinute(
-                        medicineName: medicineName,
-                        dosage: dosage,
+                        intervalMinutes: 2,
+                        weekdays: weekdaysInts,
                       );
                     } else {
-                      throw Exception('Exact alarm permission required for minute-based notifications');
+                      await NotificationService.scheduleIntervalMinutes(
+                        tag: medicineName,
+                        title: "Take your $medicineName",
+                        body: "Dosage: $dosage",
+                        intervalMinutes: 2,
+                        weekdays: weekdaysInts,
+                      );
                     }
                   } else if (interval == "Daily") {
                     // Try to request exact alarm permission for precise firing
@@ -152,7 +156,7 @@ class SchedulePage extends StatelessWidget {
                       weekdays: weekdaysInts,
                     );
                   } else {
-                    // For interval modes (excluding q1m), prefer exact scheduling when permission is granted
+                    // For interval modes (excluding q2m), prefer exact scheduling when permission is granted
                     final exactGranted = await NotificationService.requestExactAlarmsPermission();
                     // map interval code
                     final intervalHours = interval == "q2h"
@@ -196,15 +200,17 @@ class SchedulePage extends StatelessWidget {
                     );
                   }
 
-                  // Also use enhanced notification service for better Android 12-14 support
-                  await EnhancedNotificationService.scheduleEnhancedReminder(
-                    medicineName: medicineName,
-                    dosage: dosage,
-                    time: selectedTime!,
-                    days: daysToSave,
-                    interval: interval,
-                    enableStockReduction: true,
-                  );
+                  // Also use enhanced notification service for better Android 12-14 support (only for non-minute intervals)
+                  if (interval != "q2m") {
+                    await EnhancedNotificationService.scheduleEnhancedReminder(
+                      medicineName: medicineName,
+                      dosage: dosage,
+                      time: selectedTime!,
+                      days: daysToSave,
+                      interval: interval,
+                      enableStockReduction: true,
+                    );
+                  }
 
                   // Show success message
                   if (context.mounted) {
@@ -487,7 +493,7 @@ class SchedulePage extends StatelessWidget {
 
                   const SizedBox(height: 16),
 
-                    // Interval selector
+                    // Interval selector - FIXED: Changed q1m to q2m
                     Container(
                       decoration: BoxDecoration(
                         color: Colors.white,
@@ -498,7 +504,7 @@ class SchedulePage extends StatelessWidget {
                         value: interval,
                         items: const [
                           DropdownMenuItem(value: 'Daily', child: Text('Daily (once/day)')),
-                          DropdownMenuItem(value: 'q1m', child: Text('Every Minute (Testing)')),
+                          DropdownMenuItem(value: 'q2m', child: Text('Every 2 minutes')),
                           DropdownMenuItem(value: 'q2h', child: Text('Every 2 hours')),
                           DropdownMenuItem(value: 'q4h', child: Text('Every 4 hours')),
                           DropdownMenuItem(value: 'q6h', child: Text('Every 6 hours')),
